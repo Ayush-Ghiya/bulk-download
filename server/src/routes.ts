@@ -111,16 +111,17 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
         await new Promise<void>((resolve, reject) => {
           const built = builder.build(archive, {
             onEntry: (name, index, total) => {
-              void send("build", { name, index, total });
-            },
-            onCacheStart: () => {
-              void send("tee", { message: "Streaming to client and cache at once" });
+              void send("build", { name, index, total }).catch(() => {});
             },
           });
           built.on("data", () => {});
           built.on("end", resolve);
           built.on("error", reject);
         });
+
+        // Emit `tee` once the archive has fully streamed to the client and
+        // cache, so the stage sweep reads build(s) → tee → done.
+        await send("tee", { message: "Streamed to client and cache at once" });
 
         await send("done", { downloadUrl: signed.url, checksum, cacheHit: false, expiresAt: signed.expiresAt });
       } catch (err) {
