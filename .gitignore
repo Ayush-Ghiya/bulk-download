@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+# runtime-generated cache/payload objects (source stays committed)
+server/storage/derived/
