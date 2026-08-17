@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import type { Hono } from "hono";
-import { stream } from "hono/streaming";
+import { streamSSE } from "hono/streaming";
 import { BulkDownloadArchive } from "./bulk-download.ts";
 import type { Catalog } from "./catalog.ts";
 import { bulkDownloadContentPath, type UrlSigner } from "./signer.ts";
@@ -52,9 +52,9 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
       .filter(Boolean);
     const zipName = (c.req.query("zipName") ?? "assets.zip").trim() || "assets.zip";
 
-    return stream(c, async (s) => {
+    return streamSSE(c, async (s) => {
       const send = (event: string, data: unknown) =>
-        s.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        s.writeSSE({ event, data: JSON.stringify(data) });
 
       try {
         await send("browser", { message: "Request leaves the browser" });
