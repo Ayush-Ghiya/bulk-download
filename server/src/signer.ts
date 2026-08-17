@@ -72,7 +72,13 @@ export class UrlSigner {
   verify(pathname: string, token: string, expires: number): boolean {
     const now = Math.floor(Date.now() / 1000);
     if (!Number.isFinite(expires) || now > expires) return false;
-    const expected = this.token(encodeURI(decodeURI(pathname)), expires);
+    let normalized: string;
+    try {
+      normalized = encodeURI(decodeURI(pathname));
+    } catch {
+      return false;
+    }
+    const expected = this.token(normalized, expires);
     const a = Buffer.from(token);
     const b = Buffer.from(expected);
     if (a.length !== b.length) return false;
