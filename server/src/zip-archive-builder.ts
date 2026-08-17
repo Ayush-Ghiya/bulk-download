@@ -36,15 +36,19 @@ export class ZipArchiveBuilder {
       toClient.destroy(err);
       toCache.destroy(err);
     });
+    // Both PassThroughs need an 'error' listener: an unlistened 'error'
+    // event (e.g. from destroy(err)) is an uncaught exception in Node.
     toClient.on("error", () => zip.destroy());
+    toCache.on("error", () => {}); // cache is best-effort
 
-    void this.cache(toCache, archive.checksum, progress);
+    void this.cache(zip, toCache, archive.checksum, progress);
     void this.writeEntries(zip, archive.entries, progress);
 
     return toClient;
   }
 
   private async cache(
+    zip: archiver.Archiver,
     body: PassThrough,
     checksum: string,
     progress?: BuildProgress,
@@ -55,9 +59,11 @@ export class ZipArchiveBuilder {
       const { stream, done } = await this.storage.openDerivedWrite(key);
       body.pipe(stream);
       await done;
-    } catch (err) {
-      // Cache is best-effort; the client stream still completes.
-      body.destroy(err instanceof Error ? err : new Error(String(err)));
+    } catch {
+      // Best-effort: detach the cache branch so the client download still
+      // completes even when caching fails.
+      zip.unpipe(body);
+      body.destroy();
     }
   }
 

@@ -64,6 +64,10 @@ export class Storage {
   }
 
   openSource(sourceKey: string): NodeJS.ReadableStream {
+    // stat first so a missing source throws synchronously; the caller can
+    // then skip it, rather than the ENOENT arriving later as a stream
+    // 'error' that would tear down the archive.
+    statSync(this.sourcePath(sourceKey));
     return createReadStream(this.sourcePath(sourceKey));
   }
 
