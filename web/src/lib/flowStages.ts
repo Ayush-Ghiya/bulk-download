@@ -27,7 +27,7 @@ export const FLOW_STAGES: FlowStage[] = [
   { id: "bff", label: "Dashboard BFF", node: "BFF", kind: "narrated",
     description: "In production a Next.js BFF proxies the request to the API, hiding the API key." },
   { id: "resolve", label: "Resolve assets", node: "API", kind: "real",
-    description: "The API looks up each asset; only known/ready ones are kept." },
+    description: "The API looks up each requested asset by ID; unknown IDs are skipped." },
   { id: "payload-write", label: "Write payload", node: "S3 payload", kind: "real",
     description: "A content-addressed payload.json is written to the derived bucket, keyed by SHA-256 checksum." },
   { id: "sign", label: "Sign URL", node: "Signer", kind: "real",

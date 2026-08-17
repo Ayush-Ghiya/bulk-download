@@ -51,6 +51,9 @@ export class Storage {
     key: string,
   ): Promise<{ stream: NodeJS.WritableStream; done: Promise<void> }> {
     const finalPath = this.derivedPath(key);
+    // NOTE: fixed temp path — two concurrent first-time builds of the SAME checksum
+    // could race this file. Acceptable for this single-user demo (no cache-race
+    // hardening; see docs/04). Each client still streams from its own builder.
     const tmpPath = `${finalPath}.tmp`;
     await mkdir(dirname(finalPath), { recursive: true });
     const stream = createWriteStream(tmpPath);
