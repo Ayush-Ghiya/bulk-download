@@ -1,7 +1,7 @@
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Loader2 } from "lucide-react";
-import { BulkDownloadModal } from "@/components/BulkDownloadModal";
+import { DownloadPanel } from "@/components/DownloadPanel";
 import { FlowWidget } from "@/components/FlowWidget";
 import { RunHistory } from "@/components/RunHistory";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +44,9 @@ function SectionHeader({
 export function DemoPage(): React.JSX.Element {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [modalOpen, setModalOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const flowRef = useRef<HTMLElement>(null);
   const dl = useBulkDownload();
 
   useEffect(() => {
@@ -70,8 +71,19 @@ export function DemoPage(): React.JSX.Element {
 
   const startDownload = () => {
     if (selectedIds.length === 0) return;
-    setModalOpen(true);
+    setPanelOpen(true);
     dl.start(selectedIds, "assets.zip");
+    // Bring the animated pipeline into view so it can be watched while it runs.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    flowRef.current?.scrollIntoView({
+      behavior: reduced ? "auto" : "smooth",
+      block: "center",
+    });
+  };
+
+  const closePanel = () => {
+    setPanelOpen(false);
+    dl.reset();
   };
 
   const toggleAll = () =>
@@ -175,7 +187,7 @@ export function DemoPage(): React.JSX.Element {
       </section>
 
       {/* Flow visualization — the hero */}
-      <section className="flex flex-col gap-5">
+      <section ref={flowRef} className="flex flex-col gap-5 scroll-mt-20">
         <SectionHeader index="02" label="Pipeline" title="Live flow">
           <Badge
             variant="outline"
@@ -205,9 +217,10 @@ export function DemoPage(): React.JSX.Element {
         <RunHistory refreshKey={historyKey} />
       </section>
 
-      <BulkDownloadModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
+      <DownloadPanel
+        open={panelOpen}
+        onClose={closePanel}
+        stages={dl.stages}
         loading={dl.loading}
         error={dl.error}
         downloadUrl={dl.downloadUrl}
