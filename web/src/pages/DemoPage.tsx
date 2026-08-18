@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Loader2 } from "lucide-react";
-import { DownloadPanel } from "@/components/DownloadPanel";
+import { DownloadDock } from "@/components/DownloadDock";
 import { FlowWidget } from "@/components/FlowWidget";
 import { RunHistory } from "@/components/RunHistory";
 import { Badge } from "@/components/ui/badge";
@@ -217,7 +217,7 @@ export function DemoPage(): React.JSX.Element {
         <RunHistory refreshKey={historyKey} />
       </section>
 
-      <DownloadPanel
+      <DownloadDock
         open={panelOpen}
         onClose={closePanel}
         stages={dl.stages}

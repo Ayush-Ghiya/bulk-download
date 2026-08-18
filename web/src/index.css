@@ -201,3 +201,15 @@ body {
     animation: fw-track-shimmer 3.4s ease-in-out infinite;
   }
 }
+
+/* Entrance for the bottom-right download dock: slide + fade up from the corner. */
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
