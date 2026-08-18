@@ -86,7 +86,7 @@ const PHASE_DETAIL: Record<StageId, { impl: string; prod: string }> = {
     prod: "The same scheme, but the security key is a per-tenant secret pulled from a secrets store and rotated on a schedule.",
   },
   cdn: {
-    impl: "routes.ts emits the cdn event after a fixed 250 ms sleep. Nothing is cached at an edge here.",
+    impl: "routes.ts emits the cdn event after a fixed 200 ms sleep. Nothing is cached at an edge here.",
     prod: "A CDN edge caches successful origin responses and forwards misses to the origin worker.",
   },
   "origin-verify": {
@@ -142,7 +142,7 @@ interface SimplifyRow {
 const SIMPLIFY_ROWS: SimplifyRow[] = [
   { aspect: "Content-addressed checksum", status: "Keeps", note: "Real SHA-256 over { tenantId, zipName, entries }, order-sensitive." },
   { aspect: "Tee-stream ZIP builder", status: "Keeps", note: "Real store-mode archiver piped to two PassThroughs." },
-  { aspect: "Idempotent payload.json + download.zip cache", status: "Keeps", note: "Real two-directory storage with atomic temp-then-rename writes." },
+  { aspect: "Idempotent payload.json + download.zip cache", status: "Keeps", note: "Real two-directory storage; download.zip is written atomically (temp-then-rename), while payload.json is a plain overwrite — safe because it's idempotent (same checksum ⇒ same bytes)." },
   { aspect: "HMAC-signed, expiring URLs", status: "Keeps", note: "Real HMAC-SHA256 scheme; 5-day default, 7-day cap." },
   { aspect: "Origin token re-verification", status: "Keeps", note: "The download route calls signer.verify() independently of the stream." },
   { aspect: "SSE stage-by-stage progress", status: "Keeps", note: "Real streamSSE endpoint driving the live flow widget." },
