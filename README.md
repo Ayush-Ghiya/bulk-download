@@ -32,19 +32,27 @@ tee-streaming archive builder underneath, not a toy simulation of one.
 
 ## Run
 
-Two terminals — the server and the web app run as separate processes:
+This repo is a Bun workspaces monorepo (`server/` and `web/`), with a single
+root install and a single command to bring both processes up:
 
 ```bash
-# Terminal 1 — API server (Hono on Bun), http://localhost:3001
-cd server && bun install && bun run dev
-
-# Terminal 2 — web app (Vite + React), http://localhost:5173
-cd web && bun install && bun run dev
+bun install   # one install at the repo root, hoists shared deps
+bun run dev   # runs server (:3001) and web (:5173) dev servers in parallel
 ```
 
-Open the web app's dev URL, select a few assets, click "Download all", and
-watch the flow widget. Run it again with the same selection to see a cache
-HIT (the `build`/`tee` stages will show as skipped).
+Other root scripts:
+
+```bash
+bun run build         # builds the web app for production (server has no build step)
+bun run preview       # serves the production web build
+bun run start:server  # runs the server without --watch
+bun run typecheck     # typechecks workspace packages that define a typecheck script
+```
+
+Open the web app's dev URL (http://localhost:5173), select a few assets,
+click "Download all", and watch the flow widget. Run it again with the same
+selection to see a cache HIT (the `build`/`tee` stages will show as
+skipped).
 
 ## Docs
 

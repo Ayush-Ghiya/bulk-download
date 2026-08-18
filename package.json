@@ -1,0 +1,13 @@
+{
+  "name": "bulk-download-demo",
+  "private": true,
+  "type": "module",
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter bulk-download-demo-web build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "preview": "bun run --filter bulk-download-demo-web preview",
+    "start:server": "bun run --filter bulk-download-demo-server start"
+  }
+}
