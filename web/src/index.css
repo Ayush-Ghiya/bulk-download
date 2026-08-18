@@ -145,3 +145,59 @@ body {
     );
   }
 }
+
+/* ---- FlowWidget pipeline animations (additive; see FlowWidget.tsx) ---- */
+
+/* Halo behind an active node — breathing scale + opacity. */
+@keyframes fw-pulse-halo {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.12);
+  }
+}
+
+/* Soft breathing of the travelling particle's outer halo. */
+@keyframes fw-particle-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.25);
+  }
+}
+
+/* Very slow ambient shimmer of the idle track. */
+@keyframes fw-track-shimmer {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* Continuous motion is opt-in: reduced-motion users get a static pipeline. */
+@media (prefers-reduced-motion: no-preference) {
+  .fw-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: fw-pulse-halo 1.9s ease-in-out infinite;
+  }
+  .fw-breathe {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: fw-particle-breathe 2.2s ease-in-out infinite;
+  }
+  .fw-shimmer {
+    animation: fw-track-shimmer 3.4s ease-in-out infinite;
+  }
+}
