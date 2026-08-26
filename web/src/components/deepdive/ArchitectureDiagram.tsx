@@ -13,7 +13,7 @@ import type React from "react";
  * ------------------------------------------------------------------ */
 
 const W = 908;
-const H = 452;
+const H = 470;
 const NW = 124;
 const NH = 52;
 
@@ -28,24 +28,24 @@ interface NodeDef {
   kind: Kind;
 }
 
-// ---- Lane A: mint the link (y ~ 48) ----
-const AY = 52;
+// ---- Lane A: mint the link (y ~ 64) ----
+const AY = 64;
 const A_BROWSER = { x: 16, y: AY, title: "Browser", sub: "dashboard", kind: "node" } as const;
 const A_BFF = { x: 188, y: AY, title: "Dashboard BFF", sub: "proxy · prod", kind: "node" } as const;
 const A_API = { x: 360, y: AY, title: "API", sub: "resolve + sign", kind: "node" } as const;
 const A_SIGNER = { x: 532, y: AY, title: "Signer", sub: "HMAC-SHA256", kind: "node" } as const;
-const A_PAYLOAD = { x: 360, y: 150, title: "Derived bucket", sub: "payload.json", kind: "store" } as const;
+const A_PAYLOAD = { x: 360, y: 162, title: "Derived bucket", sub: "payload.json", kind: "store" } as const;
 
 // ---- Lane B: serve the archive (y ~ 276) ----
-const BY = 278;
+const BY = 276;
 const B_BROWSER = { x: 16, y: BY, title: "Browser", sub: "opens link", kind: "node" } as const;
 const B_CDN = { x: 168, y: BY, title: "CDN edge", sub: "cache · prod", kind: "node" } as const;
 const B_ORIGIN = { x: 320, y: BY, title: "Origin worker", sub: "verify token", kind: "node" } as const;
 const B_CACHE = { x: 472, y: BY, title: "Cache", sub: "download.zip?", kind: "decision" } as const;
 const B_TEE = { x: 624, y: BY, title: "Tee builder", sub: "archiver · store", kind: "node" } as const;
 const B_OUT = { x: 776, y: BY, title: "ZIP response", sub: "→ browser", kind: "node" } as const;
-const B_SOURCE = { x: 320, y: 378, title: "Source bucket", sub: "originals · read", kind: "store" } as const;
-const B_DERIVED = { x: 624, y: 378, title: "Derived bucket", sub: "download.zip · write", kind: "store" } as const;
+const B_SOURCE = { x: 320, y: 392, title: "Source bucket", sub: "originals · read", kind: "store" } as const;
+const B_DERIVED = { x: 624, y: 392, title: "Derived bucket", sub: "download.zip · write", kind: "store" } as const;
 
 const NODES: NodeDef[] = [
   A_BROWSER, A_BFF, A_API, A_SIGNER, A_PAYLOAD,
@@ -166,10 +166,10 @@ export function ArchitectureDiagram(): React.JSX.Element {
         </defs>
 
         {/* Lane labels */}
-        <text x={16} y={26} className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]">
+        <text x={16} y={36} className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]">
           <tspan className="fill-primary">A</tspan> · mint — GET /api/bulk-download/stream (SSE)
         </text>
-        <text x={16} y={252} className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]">
+        <text x={16} y={250} className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]">
           <tspan className="fill-primary">B</tspan> · serve — GET /assets/{"{tenantId}"}/download-all/{"{checksum}"}/{"{zipName}"}
         </text>
 
@@ -179,15 +179,15 @@ export function ArchitectureDiagram(): React.JSX.Element {
         <Edge d={`M ${right(A_API)} ${ay} L ${A_SIGNER.x - 4} ${ay}`} />
         <Edge
           d={`M ${cx(A_API)} ${A_API.y + NH} L ${cx(A_API)} ${A_PAYLOAD.y - 4}`}
-          label="write"
-          lx={cx(A_API) + 34}
-          ly={A_API.y + NH + 24}
+          label="saves record"
+          lx={cx(A_API) + 46}
+          ly={A_API.y + NH + 22}
         />
 
         {/* Divider — the signed link bridges the two requests */}
-        <line x1={16} y1={214} x2={W - 16} y2={214} className="stroke-border" strokeDasharray="2 6" />
-        <rect x={W / 2 - 232} y={202} width={464} height={24} rx={12} className="fill-card stroke-primary/30" strokeWidth={1} />
-        <text x={W / 2} y={218} textAnchor="middle" className="fill-muted-foreground font-mono text-[10px] tracking-tight">
+        <line x1={16} y1={226} x2={W - 16} y2={226} className="stroke-border" strokeDasharray="2 6" />
+        <rect x={W / 2 - 232} y={214} width={464} height={24} rx={12} className="fill-card stroke-primary/30" strokeWidth={1} />
+        <text x={W / 2} y={230} textAnchor="middle" className="fill-muted-foreground font-mono text-[10px] tracking-tight">
           Signer returns a signed, expiring link → the browser opens it as request B
         </text>
 
@@ -210,24 +210,24 @@ export function ArchitectureDiagram(): React.JSX.Element {
 
         {/* HIT bypass arc — cache-check jumps straight to the response */}
         <Edge
-          d={`M ${cx(B_CACHE)} ${B_CACHE.y} C ${cx(B_CACHE)} ${B_CACHE.y - 40}, ${cx(B_OUT)} ${B_OUT.y - 40}, ${cx(B_OUT)} ${B_OUT.y - 4}`}
+          d={`M ${cx(B_CACHE)} ${B_CACHE.y} C ${cx(B_CACHE)} ${B_CACHE.y - 30}, ${cx(B_OUT)} ${B_OUT.y - 30}, ${cx(B_OUT)} ${B_OUT.y - 4}`}
           label="hit · cached download.zip"
           lx={(cx(B_CACHE) + cx(B_OUT)) / 2}
-          ly={B_CACHE.y - 30}
+          ly={B_CACHE.y - 20}
         />
 
         {/* Bucket edges */}
         <Edge
-          d={`M ${cx(B_SOURCE)} ${B_SOURCE.y - 4} L ${B_TEE.x + 30} ${B_TEE.y + NH + 4}`}
+          d={`M ${cx(B_SOURCE)} ${B_SOURCE.y - 4} L ${cx(B_TEE)} ${B_TEE.y + NH + 4}`}
           label="reads"
-          lx={cx(B_SOURCE) + 96}
-          ly={B_SOURCE.y - 12}
+          lx={(cx(B_SOURCE) + cx(B_TEE)) / 2 + 8}
+          ly={(B_SOURCE.y + B_TEE.y + NH) / 2 - 6}
         />
         <Edge
           d={`M ${cx(B_TEE)} ${B_TEE.y + NH} L ${cx(B_DERIVED)} ${B_DERIVED.y - 4}`}
-          label="tee"
-          lx={cx(B_TEE) + 22}
-          ly={B_TEE.y + NH + 24}
+          label="saves"
+          lx={cx(B_TEE) + 26}
+          ly={B_TEE.y + NH + 22}
         />
 
         {NODES.map((n) => (

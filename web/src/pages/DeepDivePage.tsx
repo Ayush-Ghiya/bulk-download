@@ -252,25 +252,21 @@ export function DeepDivePage(): React.JSX.Element {
       <section className="flex flex-col gap-5">
         <SectionHeader index="01" label="Topology" title="The production architecture" />
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          &ldquo;Download All&rdquo; is genuinely <span className="text-foreground">two
-          separate HTTP requests</span>. First the dashboard opens an SSE stream that
-          resolves the selection, writes a <Term>payload.json</Term>, and signs a link
-          (lane A). Then the browser opens that link as a second request against the
-          origin, which re-verifies the token and either serves the cached archive or
-          builds it (lane B). Splitting the diagram this way is the honest picture: the
-          stream never carries archive bytes — only progress events.
+          First the dashboard asks the server to prepare the download over a
+          streaming connection — the server resolves the selection, saves a
+          record of it, and signs a link (lane A). Then the browser opens
+          that link as a second request, and the server re-verifies it and
+          either serves a cached archive or builds one (lane B). The
+          streaming connection never carries the ZIP itself — only progress
+          updates.
         </p>
         <div className="edge-glow relative overflow-hidden rounded-2xl border border-border bg-card/60 p-4 shadow-2xl shadow-black/40 sm:p-8">
           <ArchitectureDiagram />
         </div>
         <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">
-          Solid cyan-edged nodes are real in this demo; dashed nodes
-          (<span className="text-foreground">Dashboard BFF</span>,{" "}
-          <span className="text-foreground">CDN edge</span>) are narrated. The two
-          &ldquo;buckets&rdquo; are two local folders — <Term>server/storage/source/</Term>{" "}
-          (read-only originals) and <Term>server/storage/derived/</Term> (regenerable
-          payloads and archives) — but the read-only-vs-derived separation is exactly the
-          same one two S3 buckets would give you.
+          The two &ldquo;buckets&rdquo; are two local folders — read-only
+          originals and regenerable payloads/archives — the same
+          read-only-vs-derived split two S3 buckets would give you.
         </p>
       </section>
 
