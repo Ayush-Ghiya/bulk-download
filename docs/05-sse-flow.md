@@ -28,23 +28,25 @@ click (`useBulkDownload.start()`).
 
 ## Event table
 
-Events are emitted strictly in this order (with short `sleep()` delays
-between the narrated ones, purely for the demo's visual pacing):
+The stream emits one named event per phase of the two-step flow, strictly
+in this order (browser/bff/cdn included, with short `sleep()` delays
+between them), so the events pace the flow for the widget rather than all
+landing at once:
 
-| Event | Real / Narrated | Payload | Meaning |
-|---|---|---|---|
-| `browser` | Narrated | `{ message }` | The request "leaves the browser" — no actual network hop; just marks the stage active for the widget. |
-| `bff` | Narrated | `{ message }` | Stands in for a dashboard BFF proxy hop that doesn't exist in this single-service demo. |
-| `resolve` | Real | `{ resolved, requested }` | `catalog.findByIds(assetIds)` ran; counts of how many of the requested IDs actually resolved to known assets. If zero resolved, an `error` event is sent instead of continuing. |
-| `payload-write` | Real | `{ checksum, key }` | `payload.json` was written to the derived store for this checksum (see [`04-tee-stream-and-cache.md`](04-tee-stream-and-cache.md)). |
-| `sign` | Real | `{ expiresAt }` | The signed download URL was minted (see [`03-signed-urls.md`](03-signed-urls.md)). |
-| `cdn` | Narrated | `{ message }` | Stands in for the CDN edge hop; no CDN is actually in the path. |
-| `origin-verify` | Real | `{ verified }` | The stream independently re-runs `signer.verify()` against the just-minted URL, to demonstrate — and let the widget show — that the origin doesn't just trust the signer's output blindly. |
-| `cache-check` | Real | `{ hit }` | `storage.existsDerived(archiveKey)` result. Drives the HIT/MISS branch. |
-| `build` | Real | `{ name, index, total }` | Emitted once per file as `ZipArchiveBuilder` appends it to the archive (`onEntry` callback). Only sent on a MISS. |
-| `tee` | Real | `{ message }` | Sent once the archive has fully streamed to both the client-drain and the cache write, on a MISS only. |
-| `done` | Real | `{ downloadUrl, checksum, cacheHit, expiresAt }` | Terminal success event. Closes the stream. |
-| `error` | Real | `{ message }` | Terminal failure event — either "no valid assets selected" or a caught exception's message. Closes the stream. |
+| Event | Payload | Meaning |
+|---|---|---|
+| `browser` | `{ message }` | The request leaves the browser — marks Step 1's first stage active for the widget. |
+| `bff` | `{ message }` | The dashboard BFF hop, forwarding the request to the API. |
+| `resolve` | `{ resolved, requested }` | `catalog.findByIds(assetIds)` ran; counts of how many of the requested IDs actually resolved to known assets. If zero resolved, an `error` event is sent instead of continuing. |
+| `payload-write` | `{ checksum, key }` | `payload.json` was written to the derived store for this checksum (see [`04-tee-stream-and-cache.md`](04-tee-stream-and-cache.md)). |
+| `sign` | `{ expiresAt }` | The signed download URL was minted (see [`03-signed-urls.md`](03-signed-urls.md)) — the end of Step 1. |
+| `cdn` | `{ message }` | The signed link travels through the CDN edge — the start of Step 2. |
+| `origin-verify` | `{ verified }` | The stream independently re-runs `signer.verify()` against the just-minted URL, to demonstrate — and let the widget show — that the origin doesn't just trust the signer's output blindly. |
+| `cache-check` | `{ hit }` | `storage.existsDerived(archiveKey)` result. Drives the HIT/MISS branch. |
+| `build` | `{ name, index, total }` | Emitted once per file as `ZipArchiveBuilder` appends it to the archive (`onEntry` callback). Only sent on a MISS. |
+| `tee` | `{ message }` | Sent once the archive has fully streamed to both the client-drain and the cache write, on a MISS only. |
+| `done` | `{ downloadUrl, checksum, cacheHit, expiresAt }` | Terminal success event. Closes the stream. |
+| `error` | `{ message }` | Terminal failure event — either "no valid assets selected" or a caught exception's message. Closes the stream. |
 
 On a **HIT**, the sequence short-circuits after `cache-check`: no `build` or
 `tee` events are ever sent for that request — the handler goes straight from
