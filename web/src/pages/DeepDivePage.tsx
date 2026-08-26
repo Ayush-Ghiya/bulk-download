@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { ArchitectureDiagram } from "@/components/deepdive/ArchitectureDiagram";
 import { CodeBlock } from "@/components/deepdive/CodeBlock";
 import { Badge } from "@/components/ui/badge";
-import { FLOW_STAGES, type StageId } from "@/lib/flowStages";
+import { FLOW_STAGES, STEP_LABELS, type FlowStep } from "@/lib/flowStages";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ *
@@ -42,58 +42,6 @@ function Term({ children }: { children: React.ReactNode }): React.JSX.Element {
     </code>
   );
 }
-
-/* ------------------------------------------------------------------ *
- * Per-phase augmentation: what the demo actually does, and what the
- * production system does differently. Keyed by the same StageId the
- * SSE protocol and the flow widget use, so nothing drifts.
- * ------------------------------------------------------------------ */
-const PHASE_DETAIL: Record<StageId, { impl: string; prod: string }> = {
-  browser: {
-    impl: "useBulkDownload.start() serializes the selected asset IDs + zip name into a query string and opens exactly one EventSource per click.",
-    prod: "The Media Library dashboard SPA. Identical in production — the stage is narrated only because no real network latency is measured; the server just pauses 250 ms for pacing.",
-  },
-  bff: {
-    impl: "routes.ts emits the bff event after a fixed 250 ms sleep. No proxy process exists; the browser talks straight to the one Hono server.",
-    prod: "A Next.js backend-for-frontend proxies the request to the API so the API credentials never reach the client.",
-  },
-  resolve: {
-    impl: "catalog.findByIds(assetIds) resolves each ID, dedupes by first occurrence, and drops unknown IDs. Zero resolved short-circuits to an error event.",
-    prod: "A multi-tenant catalog lookup with per-tenant scoping and READY-status filtering; requests for another tenant's assets are rejected.",
-  },
-  "payload-write": {
-    impl: "archive.checksum is computed, then storage.writeDerived(payloadKey, …) writes payload.json unconditionally — on every request, hit or miss.",
-    prod: "An S3 PutObject into the derived bucket; the checksum may also be indexed in DynamoDB for lifecycle/expiry bookkeeping.",
-  },
-  sign: {
-    impl: "signer.sign(bulkDownloadContentPath(checksum, zipName)) mints an HMAC-signed link with the 5-day default expiry.",
-    prod: "The same scheme, but the security key is a per-tenant secret pulled from a secrets store and rotated on a schedule.",
-  },
-  cdn: {
-    impl: "routes.ts emits the cdn event after a fixed 200 ms sleep. Nothing is cached at an edge here.",
-    prod: "A CDN edge caches successful origin responses and forwards misses to the origin worker.",
-  },
-  "origin-verify": {
-    impl: "The stream independently re-runs signer.verify() against the URL it just minted and reports { verified } — it does not trust its own signer blindly.",
-    prod: "A separate origin worker, at a different trust boundary from the API, re-verifies the token rather than trusting the upstream hop.",
-  },
-  "cache-check": {
-    impl: "storage.existsDerived(archiveKey) returns { hit }. The hook records cacheHit immediately so the widget can branch before done arrives.",
-    prod: "A HEAD / existence check against download.zip for the checksum in the derived object store.",
-  },
-  build: {
-    impl: "On a miss, ZipArchiveBuilder.writeEntries() opens and appends each source serially; the onEntry callback emits one build event per file.",
-    prod: "May run inside an SQS-driven worker so a large archive builds off the synchronous request path.",
-  },
-  tee: {
-    impl: "A single archiver is piped to two PassThroughs (client + cache) at once; the event is emitted only after the archive has fully drained.",
-    prod: "The identical tee mechanism, with the cache branch writing to the derived S3 bucket instead of a local directory.",
-  },
-  done: {
-    impl: "Terminal { downloadUrl, checksum, cacheHit, expiresAt }. The hook persists the run to IndexedDB, then closes the EventSource.",
-    prod: "The dashboard surfaces the link; opening it issues request B against the origin (which may be a HIT built by an earlier requester).",
-  },
-};
 
 interface SseRow {
   event: string;
@@ -330,51 +278,44 @@ export function DeepDivePage(): React.JSX.Element {
       <section className="flex flex-col gap-5">
         <SectionHeader index="02" label="Pipeline" title="Phase by phase" />
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          The eleven phases below are the single source of truth shared by the flow
-          widget, the SSE protocol, and this page (<Term>web/src/lib/flowStages.ts</Term>).
-          For each one: what really happens, where it lives in this demo, and what the
-          production system does differently.
+          The flow is two HTTP requests. First the browser asks the server to prepare a
+          download and gets back a signed link; then it opens that link to actually
+          receive the ZIP. Here is every phase of both, in order.
         </p>
-        <ol className="flex flex-col gap-3">
-          {FLOW_STAGES.map((stage, i) => {
-            const detail = PHASE_DETAIL[stage.id];
-            return (
-              <li
-                key={stage.id}
-                className="rounded-xl border border-border bg-card p-4 sm:p-5"
-              >
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary font-mono text-[11px] font-semibold text-foreground">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">{stage.node}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">{stage.label}</span>
-                </div>
-                <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-                  {stage.description}
-                </p>
-                <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-                  <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary/90">
-                      In this demo
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                      {detail.impl}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                      In production
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                      {detail.prod}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="flex flex-col gap-8">
+          {([1, 2] as FlowStep[]).map((step) => (
+            <div key={step} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {STEP_LABELS[step].title}
+                </h3>
+                <p className="text-xs text-muted-foreground">{STEP_LABELS[step].caption}</p>
+              </div>
+              <ol className="flex flex-col gap-3">
+                {FLOW_STAGES.filter((s) => s.step === step).map((stage) => {
+                  const n = FLOW_STAGES.indexOf(stage) + 1;
+                  return (
+                    <li
+                      key={stage.id}
+                      className="rounded-xl border border-border bg-card p-4 sm:p-5"
+                    >
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary font-mono text-[11px] font-semibold text-foreground">
+                          {n}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">{stage.node}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{stage.label}</span>
+                      </div>
+                      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+                        {stage.description}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* 03 — Content-addressed cache */}
