@@ -199,13 +199,13 @@ export function ArchitectureDiagram(): React.JSX.Element {
           d={`M ${right(B_CACHE)} ${by} L ${B_TEE.x - 4} ${by}`}
           label="miss"
           lx={(right(B_CACHE) + B_TEE.x) / 2}
-          ly={by - 8}
+          ly={BY - 4}
         />
         <Edge
           d={`M ${right(B_TEE)} ${by} L ${B_OUT.x - 4} ${by}`}
           label="client"
           lx={(right(B_TEE) + B_OUT.x) / 2}
-          ly={by - 8}
+          ly={BY - 4}
         />
 
         {/* HIT bypass arc — cache-check jumps straight to the response */}
