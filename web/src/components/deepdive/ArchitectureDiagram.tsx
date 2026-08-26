@@ -30,26 +30,114 @@ interface NodeDef {
 
 // ---- Lane A: mint the link (y ~ 64) ----
 const AY = 64;
-const A_BROWSER = { x: 16, y: AY, title: "Browser", sub: "dashboard", kind: "node" } as const;
-const A_BFF = { x: 188, y: AY, title: "Dashboard BFF", sub: "proxy · prod", kind: "node" } as const;
-const A_API = { x: 360, y: AY, title: "API", sub: "resolve + sign", kind: "node" } as const;
-const A_SIGNER = { x: 532, y: AY, title: "Signer", sub: "HMAC-SHA256", kind: "node" } as const;
-const A_PAYLOAD = { x: 360, y: 162, title: "Derived bucket", sub: "payload.json", kind: "store" } as const;
+const A_BROWSER = {
+  x: 16,
+  y: AY,
+  title: "Browser",
+  sub: "dashboard",
+  kind: "node",
+} as const;
+const A_BFF = {
+  x: 188,
+  y: AY,
+  title: "Browser",
+  sub: "Calls BE API",
+  kind: "node",
+} as const;
+const A_API = {
+  x: 360,
+  y: AY,
+  title: "API",
+  sub: "resolve + sign",
+  kind: "node",
+} as const;
+const A_SIGNER = {
+  x: 532,
+  y: AY,
+  title: "Signer",
+  sub: "HMAC-SHA256",
+  kind: "node",
+} as const;
+const A_PAYLOAD = {
+  x: 360,
+  y: 162,
+  title: "Derived bucket",
+  sub: "payload.json",
+  kind: "store",
+} as const;
 
 // ---- Lane B: serve the archive (y ~ 276) ----
 const BY = 276;
-const B_BROWSER = { x: 16, y: BY, title: "Browser", sub: "opens link", kind: "node" } as const;
-const B_CDN = { x: 168, y: BY, title: "CDN edge", sub: "cache · prod", kind: "node" } as const;
-const B_ORIGIN = { x: 320, y: BY, title: "Origin worker", sub: "verify token", kind: "node" } as const;
-const B_CACHE = { x: 472, y: BY, title: "Cache", sub: "download.zip?", kind: "decision" } as const;
-const B_TEE = { x: 624, y: BY, title: "Tee builder", sub: "archiver · store", kind: "node" } as const;
-const B_OUT = { x: 776, y: BY, title: "ZIP response", sub: "→ browser", kind: "node" } as const;
-const B_SOURCE = { x: 320, y: 392, title: "Source bucket", sub: "originals · read", kind: "store" } as const;
-const B_DERIVED = { x: 624, y: 392, title: "Derived bucket", sub: "download.zip · write", kind: "store" } as const;
+const B_BROWSER = {
+  x: 16,
+  y: BY,
+  title: "Browser",
+  sub: "opens link",
+  kind: "node",
+} as const;
+const B_CDN = {
+  x: 168,
+  y: BY,
+  title: "CDN edge",
+  sub: "cache · prod",
+  kind: "node",
+} as const;
+const B_ORIGIN = {
+  x: 320,
+  y: BY,
+  title: "Origin worker",
+  sub: "verify token",
+  kind: "node",
+} as const;
+const B_CACHE = {
+  x: 472,
+  y: BY,
+  title: "Cache",
+  sub: "download.zip?",
+  kind: "decision",
+} as const;
+const B_TEE = {
+  x: 624,
+  y: BY,
+  title: "Tee builder",
+  sub: "archiver · store",
+  kind: "node",
+} as const;
+const B_OUT = {
+  x: 776,
+  y: BY,
+  title: "ZIP response",
+  sub: "→ browser",
+  kind: "node",
+} as const;
+const B_SOURCE = {
+  x: 320,
+  y: 392,
+  title: "Source bucket",
+  sub: "originals · read",
+  kind: "store",
+} as const;
+const B_DERIVED = {
+  x: 624,
+  y: 392,
+  title: "Derived bucket",
+  sub: "download.zip · write",
+  kind: "store",
+} as const;
 
 const NODES: NodeDef[] = [
-  A_BROWSER, A_BFF, A_API, A_SIGNER, A_PAYLOAD,
-  B_BROWSER, B_CDN, B_ORIGIN, B_CACHE, B_TEE, B_OUT, B_SOURCE, B_DERIVED,
+  A_BFF,
+  A_API,
+  A_SIGNER,
+  A_PAYLOAD,
+  B_BROWSER,
+  B_CDN,
+  B_ORIGIN,
+  B_CACHE,
+  B_TEE,
+  B_OUT,
+  B_SOURCE,
+  B_DERIVED,
 ];
 
 function cx(n: { x: number; w?: number }): number {
@@ -81,7 +169,12 @@ function Node({ n }: { n: NodeDef }): React.JSX.Element {
         className={rectClass}
       />
       {store ? (
-        <circle cx={n.x + 14} cy={n.y + 14} r={2.5} className="fill-primary/60" />
+        <circle
+          cx={n.x + 14}
+          cy={n.y + 14}
+          r={2.5}
+          className="fill-primary/60"
+        />
       ) : null}
       <text
         x={c}
@@ -161,20 +254,32 @@ export function ArchitectureDiagram(): React.JSX.Element {
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fill-muted-foreground/70" />
+            <path
+              d="M 0 0 L 10 5 L 0 10 z"
+              className="fill-muted-foreground/70"
+            />
           </marker>
         </defs>
 
         {/* Lane labels */}
-        <text x={16} y={36} className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]">
-          <tspan className="fill-primary">A</tspan> · mint — GET /api/bulk-download/stream (SSE)
+        <text
+          x={16}
+          y={36}
+          className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]"
+        >
+          <tspan className="fill-primary">A</tspan> · mint — GET
+          /api/bulk-download/stream (SSE)
         </text>
-        <text x={16} y={250} className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]">
-          <tspan className="fill-primary">B</tspan> · serve — GET /assets/{"{tenantId}"}/download-all/{"{checksum}"}/{"{zipName}"}
+        <text
+          x={16}
+          y={250}
+          className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]"
+        >
+          <tspan className="fill-primary">B</tspan> · serve — GET /assets/
+          {"{tenantId}"}/download-all/{"{checksum}"}/{"{zipName}"}
         </text>
 
         {/* Lane A edges */}
-        <Edge d={`M ${right(A_BROWSER)} ${ay} L ${A_BFF.x - 4} ${ay}`} />
         <Edge d={`M ${right(A_BFF)} ${ay} L ${A_API.x - 4} ${ay}`} />
         <Edge d={`M ${right(A_API)} ${ay} L ${A_SIGNER.x - 4} ${ay}`} />
         <Edge
@@ -185,10 +290,31 @@ export function ArchitectureDiagram(): React.JSX.Element {
         />
 
         {/* Divider — the signed link bridges the two requests */}
-        <line x1={16} y1={226} x2={W - 16} y2={226} className="stroke-border" strokeDasharray="2 6" />
-        <rect x={W / 2 - 232} y={214} width={464} height={24} rx={12} className="fill-card stroke-primary/30" strokeWidth={1} />
-        <text x={W / 2} y={230} textAnchor="middle" className="fill-muted-foreground font-mono text-[10px] tracking-tight">
-          Signer returns a signed, expiring link → the browser opens it as request B
+        <line
+          x1={16}
+          y1={226}
+          x2={W - 16}
+          y2={226}
+          className="stroke-border"
+          strokeDasharray="2 6"
+        />
+        <rect
+          x={W / 2 - 232}
+          y={214}
+          width={464}
+          height={24}
+          rx={12}
+          className="fill-card stroke-primary/30"
+          strokeWidth={1}
+        />
+        <text
+          x={W / 2}
+          y={230}
+          textAnchor="middle"
+          className="fill-muted-foreground font-mono text-[10px] tracking-tight"
+        >
+          Signer returns a signed, expiring link → the browser opens it as
+          request B
         </text>
 
         {/* Lane B edges */}
