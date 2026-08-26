@@ -13,7 +13,7 @@ import type React from "react";
  * ------------------------------------------------------------------ */
 
 const W = 908;
-const H = 470;
+const H = 500;
 const NW = 124;
 const NH = 52;
 
@@ -272,7 +272,7 @@ export function ArchitectureDiagram(): React.JSX.Element {
         </text>
         <text
           x={16}
-          y={250}
+          y={270}
           className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]"
         >
           <tspan className="fill-primary">B</tspan> · serve — GET /assets/
@@ -300,7 +300,7 @@ export function ArchitectureDiagram(): React.JSX.Element {
         />
         <rect
           x={W / 2 - 232}
-          y={214}
+          y={224}
           width={464}
           height={24}
           rx={12}
@@ -309,7 +309,7 @@ export function ArchitectureDiagram(): React.JSX.Element {
         />
         <text
           x={W / 2}
-          y={230}
+          y={240}
           textAnchor="middle"
           className="fill-muted-foreground font-mono text-[10px] tracking-tight"
         >
