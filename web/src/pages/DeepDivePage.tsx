@@ -3,9 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { ArchitectureDiagram } from "@/components/deepdive/ArchitectureDiagram";
 import { CodeBlock } from "@/components/deepdive/CodeBlock";
-import { Badge } from "@/components/ui/badge";
 import { FLOW_STAGES, STEP_LABELS, type FlowStep } from "@/lib/flowStages";
-import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ *
  * Section header — mirrors DemoPage's `SectionHeader` so both pages
@@ -63,34 +61,6 @@ const SSE_ROWS: SseRow[] = [
   { event: "done", payload: "{ downloadUrl, checksum, cacheHit, expiresAt }", meaning: "Terminal success. Closes the stream." },
   { event: "error", payload: "{ message }", meaning: "Terminal failure — no valid assets, or a caught exception. Closes the stream." },
 ];
-
-interface SimplifyRow {
-  aspect: string;
-  status: "Keeps" | "Narrates" | "Drops";
-  note: string;
-}
-
-const SIMPLIFY_ROWS: SimplifyRow[] = [
-  { aspect: "Content-addressed checksum", status: "Keeps", note: "Real SHA-256 over { tenantId, zipName, entries }, order-sensitive." },
-  { aspect: "Tee-stream ZIP builder", status: "Keeps", note: "Real store-mode archiver piped to two PassThroughs." },
-  { aspect: "Idempotent payload.json + download.zip cache", status: "Keeps", note: "Real two-directory storage; download.zip is written atomically (temp-then-rename), while payload.json is a plain overwrite — safe because it's idempotent (same checksum ⇒ same bytes)." },
-  { aspect: "HMAC-signed, expiring URLs", status: "Keeps", note: "Real HMAC-SHA256 scheme; 5-day default, 7-day cap." },
-  { aspect: "Origin token re-verification", status: "Keeps", note: "The download route calls signer.verify() independently of the stream." },
-  { aspect: "SSE stage-by-stage progress", status: "Keeps", note: "Real streamSSE endpoint driving the live flow widget." },
-  { aspect: "Dashboard BFF hop", status: "Narrates", note: "A bff event fires on a delay; no separate proxy process exists." },
-  { aspect: "CDN edge", status: "Narrates", note: "A cdn event fires on a delay; nothing caches at an edge." },
-  { aspect: "Real S3 / DynamoDB / CDN / SQS", status: "Drops", note: "Two local folders stand in for two buckets; no cloud services run." },
-  { aspect: "Multi-tenant catalog", status: "Drops", note: "One hardcoded demo-tenant and four seeded SVGs." },
-  { aspect: "READY-status filtering", status: "Drops", note: "findByIds resolves by ID only — there is no status field." },
-  { aspect: "Source-retry / backoff", status: "Drops", note: "The builder and routes fail fast; missing sources are just skipped." },
-  { aspect: "Rate limits / per-tenant caps", status: "Drops", note: "No caps on asset count or archive size." },
-];
-
-const STATUS_STYLES: Record<SimplifyRow["status"], string> = {
-  Keeps: "border-primary/50 text-primary",
-  Narrates: "border-border text-foreground",
-  Drops: "border-border text-muted-foreground",
-};
 
 /* ------------------------------------------------------------------ *
  * Real, verbatim excerpts from the server source (kept short).
@@ -523,44 +493,6 @@ export function DeepDivePage(): React.JSX.Element {
               </tbody>
             </table>
           </div>
-        </div>
-      </section>
-
-      {/* 07 — What this demo simplifies */}
-      <section className="flex flex-col gap-5">
-        <SectionHeader index="07" label="Honesty" title="What this demo keeps, narrates, and drops" />
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          This is a faithful extraction of the mechanism, not a re-implementation of Asset
-          Hub. Some parts are real and load-bearing; some are narrated for the widget's
-          benefit; some are dropped because they add operational weight without illustrating
-          the core idea.
-        </p>
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[560px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aspect</th>
-                <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SIMPLIFY_ROWS.map((row) => (
-                <tr key={row.aspect} className="border-b border-border/60 last:border-0 align-top">
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{row.aspect}</td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant="outline"
-                      className={cn("font-mono text-[10px] uppercase tracking-wider", STATUS_STYLES[row.status])}
-                    >
-                      {row.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-xs leading-relaxed text-muted-foreground">{row.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </section>
 
