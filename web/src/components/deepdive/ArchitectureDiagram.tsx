@@ -12,8 +12,8 @@ import type React from "react";
  *                     re-verifies the token, then HITs the cache or builds.
  * ------------------------------------------------------------------ */
 
-const W = 908;
-const H = 500;
+const W = 1000;
+const H = 544;
 const NW = 124;
 const NH = 52;
 
@@ -66,8 +66,8 @@ const A_PAYLOAD = {
   kind: "store",
 } as const;
 
-// ---- Lane B: serve the archive (y ~ 276) ----
-const BY = 276;
+// ---- Lane B: serve the archive (y ~ 336) ----
+const BY = 336;
 const B_BROWSER = {
   x: 16,
   y: BY,
@@ -76,50 +76,50 @@ const B_BROWSER = {
   kind: "node",
 } as const;
 const B_CDN = {
-  x: 168,
+  x: 184,
   y: BY,
   title: "CDN edge",
   sub: "cache · prod",
   kind: "node",
 } as const;
 const B_ORIGIN = {
-  x: 320,
+  x: 352,
   y: BY,
   title: "Origin worker",
   sub: "verify token",
   kind: "node",
 } as const;
 const B_CACHE = {
-  x: 472,
+  x: 520,
   y: BY,
   title: "Cache",
   sub: "download.zip?",
   kind: "decision",
 } as const;
 const B_TEE = {
-  x: 624,
+  x: 688,
   y: BY,
   title: "Tee builder",
   sub: "archiver · store",
   kind: "node",
 } as const;
 const B_OUT = {
-  x: 776,
+  x: 856,
   y: BY,
   title: "ZIP response",
   sub: "→ browser",
   kind: "node",
 } as const;
 const B_SOURCE = {
-  x: 320,
-  y: 392,
+  x: 352,
+  y: 452,
   title: "Source bucket",
   sub: "originals · read",
   kind: "store",
 } as const;
 const B_DERIVED = {
-  x: 624,
-  y: 392,
+  x: 688,
+  y: 452,
   title: "Derived bucket",
   sub: "download.zip · write",
   kind: "store",
@@ -272,7 +272,7 @@ export function ArchitectureDiagram(): React.JSX.Element {
         </text>
         <text
           x={16}
-          y={270}
+          y={266}
           className="fill-foreground font-mono text-[11px] uppercase tracking-[0.16em]"
         >
           <tspan className="fill-primary">B</tspan> · serve — GET /assets/
@@ -325,21 +325,23 @@ export function ArchitectureDiagram(): React.JSX.Element {
           d={`M ${right(B_CACHE)} ${by} L ${B_TEE.x - 4} ${by}`}
           label="miss"
           lx={(right(B_CACHE) + B_TEE.x) / 2}
-          ly={BY - 4}
+          ly={by + 15}
         />
         <Edge
           d={`M ${right(B_TEE)} ${by} L ${B_OUT.x - 4} ${by}`}
           label="client"
           lx={(right(B_TEE) + B_OUT.x) / 2}
-          ly={BY - 4}
+          ly={by + 15}
         />
 
-        {/* HIT bypass arc — cache-check jumps straight to the response */}
+        {/* HIT bypass arc — cache-check jumps straight to the response.
+            Bulges up into the clear band between the lane-B header and the
+            serve row; its label sits just above the arc line (no strike-through). */}
         <Edge
-          d={`M ${cx(B_CACHE)} ${B_CACHE.y} C ${cx(B_CACHE)} ${B_CACHE.y - 30}, ${cx(B_OUT)} ${B_OUT.y - 30}, ${cx(B_OUT)} ${B_OUT.y - 4}`}
+          d={`M ${cx(B_CACHE)} ${B_CACHE.y} C ${cx(B_CACHE)} ${B_CACHE.y - 34}, ${cx(B_OUT)} ${B_OUT.y - 34}, ${cx(B_OUT)} ${B_OUT.y - 4}`}
           label="hit · cached download.zip"
           lx={(cx(B_CACHE) + cx(B_OUT)) / 2}
-          ly={B_CACHE.y - 20}
+          ly={B_CACHE.y - 42}
         />
 
         {/* Bucket edges */}
