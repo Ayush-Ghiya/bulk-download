@@ -416,7 +416,6 @@ export function FlowWidget({
             const c = nodeCenter(i);
             const x = nodeX(i);
             const y = nodeY(i);
-            const narrated = stage.kind === "narrated";
             const isActive = state === "active";
             const isDone = state === "done";
             const isSkipped = state === "skipped";
@@ -439,7 +438,7 @@ export function FlowWidget({
               (isSkipped || (!isActive && !isDone && !isError)) && "fill-muted-foreground",
             );
 
-            const strokeDasharray = narrated ? "5 4" : isSkipped ? "3 4" : undefined;
+            const strokeDasharray = isSkipped ? "3 4" : undefined;
 
             return (
               <g key={stage.id} opacity={isSkipped ? 0.5 : 1}>
@@ -480,22 +479,11 @@ export function FlowWidget({
 
                 <text
                   x={c.x}
-                  y={c.y - 3}
+                  y={c.y + 4}
                   textAnchor="middle"
                   className={nameClass}
                 >
                   {stage.node}
-                </text>
-                <text
-                  x={c.x}
-                  y={c.y + 13}
-                  textAnchor="middle"
-                  className={cn(
-                    "font-mono text-[8.5px] uppercase tracking-[0.12em]",
-                    isActive ? "fill-primary/80" : "fill-muted-foreground/70",
-                  )}
-                >
-                  {narrated ? "narrated" : "live"}
                 </text>
                 <text
                   x={c.x}

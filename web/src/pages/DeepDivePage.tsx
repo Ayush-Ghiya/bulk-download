@@ -35,22 +35,6 @@ function SectionHeader({
   );
 }
 
-function KindPill({ kind }: { kind: "real" | "narrated" }): React.JSX.Element {
-  const live = kind === "real";
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "gap-1.5 font-mono text-[10px] uppercase tracking-wider",
-        live && "border-primary/50 text-primary",
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full", live ? "bg-primary" : "bg-muted-foreground/60")} />
-      {live ? "live" : "narrated"}
-    </Badge>
-  );
-}
-
 function Term({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
@@ -113,24 +97,23 @@ const PHASE_DETAIL: Record<StageId, { impl: string; prod: string }> = {
 
 interface SseRow {
   event: string;
-  kind: "real" | "narrated";
   payload: string;
   meaning: string;
 }
 
 const SSE_ROWS: SseRow[] = [
-  { event: "browser", kind: "narrated", payload: "{ message }", meaning: "Request leaves the browser — pacing only, no network hop." },
-  { event: "bff", kind: "narrated", payload: "{ message }", meaning: "Stands in for the dashboard BFF proxy hop." },
-  { event: "resolve", kind: "real", payload: "{ resolved, requested }", meaning: "catalog.findByIds ran; counts of resolved vs requested IDs." },
-  { event: "payload-write", kind: "real", payload: "{ checksum, key }", meaning: "payload.json written to the derived store for this checksum." },
-  { event: "sign", kind: "real", payload: "{ expiresAt }", meaning: "The signed download URL was minted." },
-  { event: "cdn", kind: "narrated", payload: "{ message }", meaning: "Stands in for the CDN edge hop." },
-  { event: "origin-verify", kind: "real", payload: "{ verified }", meaning: "Independent signer.verify() of the just-minted URL." },
-  { event: "cache-check", kind: "real", payload: "{ hit }", meaning: "existsDerived result — drives the HIT/MISS branch." },
-  { event: "build", kind: "real", payload: "{ name, index, total }", meaning: "One per entry as it is appended. MISS only." },
-  { event: "tee", kind: "real", payload: "{ message }", meaning: "Once, after the archive fully drains to client + cache. MISS only." },
-  { event: "done", kind: "real", payload: "{ downloadUrl, checksum, cacheHit, expiresAt }", meaning: "Terminal success. Closes the stream." },
-  { event: "error", kind: "real", payload: "{ message }", meaning: "Terminal failure — no valid assets, or a caught exception. Closes the stream." },
+  { event: "browser", payload: "{ message }", meaning: "Request leaves the browser — pacing only, no network hop." },
+  { event: "bff", payload: "{ message }", meaning: "Stands in for the dashboard BFF proxy hop." },
+  { event: "resolve", payload: "{ resolved, requested }", meaning: "catalog.findByIds ran; counts of resolved vs requested IDs." },
+  { event: "payload-write", payload: "{ checksum, key }", meaning: "payload.json written to the derived store for this checksum." },
+  { event: "sign", payload: "{ expiresAt }", meaning: "The signed download URL was minted." },
+  { event: "cdn", payload: "{ message }", meaning: "Stands in for the CDN edge hop." },
+  { event: "origin-verify", payload: "{ verified }", meaning: "Independent signer.verify() of the just-minted URL." },
+  { event: "cache-check", payload: "{ hit }", meaning: "existsDerived result — drives the HIT/MISS branch." },
+  { event: "build", payload: "{ name, index, total }", meaning: "One per entry as it is appended. MISS only." },
+  { event: "tee", payload: "{ message }", meaning: "Once, after the archive fully drains to client + cache. MISS only." },
+  { event: "done", payload: "{ downloadUrl, checksum, cacheHit, expiresAt }", meaning: "Terminal success. Closes the stream." },
+  { event: "error", payload: "{ message }", meaning: "Terminal failure — no valid assets, or a caught exception. Closes the stream." },
 ];
 
 interface SimplifyRow {
@@ -315,18 +298,6 @@ export function DeepDivePage(): React.JSX.Element {
           archive builder, and the HMAC-signed expiring links — grounded in the exact
           code that ships in <Term>server/src/</Term>.
         </p>
-
-        {/* Legend */}
-        <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <KindPill kind="real" />
-            <span>executes real backend work in this demo</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <KindPill kind="narrated" />
-            <span>production-only hop, narrated for completeness</span>
-          </div>
-        </div>
       </header>
 
       {/* 01 — Architecture */}
@@ -378,9 +349,6 @@ export function DeepDivePage(): React.JSX.Element {
                   </span>
                   <span className="text-sm font-semibold text-foreground">{stage.node}</span>
                   <span className="font-mono text-[11px] text-muted-foreground">{stage.label}</span>
-                  <span className="ml-auto">
-                    <KindPill kind={stage.kind === "real" ? "real" : "narrated"} />
-                  </span>
                 </div>
                 <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
                   {stage.description}
@@ -603,7 +571,6 @@ export function DeepDivePage(): React.JSX.Element {
               <thead>
                 <tr className="border-b border-border">
                   <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Event</th>
-                  <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Kind</th>
                   <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Payload</th>
                   <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Meaning</th>
                 </tr>
@@ -612,16 +579,6 @@ export function DeepDivePage(): React.JSX.Element {
                 {SSE_ROWS.map((row) => (
                   <tr key={row.event} className="border-b border-border/60 last:border-0 align-top">
                     <td className="px-3 py-2.5 font-mono text-[12px] text-foreground">{row.event}</td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={cn(
-                          "font-mono text-[10px] uppercase tracking-wider",
-                          row.kind === "real" ? "text-primary" : "text-muted-foreground",
-                        )}
-                      >
-                        {row.kind === "real" ? "live" : "narrated"}
-                      </span>
-                    </td>
                     <td className="px-3 py-2.5 font-mono text-[10.5px] text-muted-foreground">{row.payload}</td>
                     <td className="px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{row.meaning}</td>
                   </tr>

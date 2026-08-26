@@ -10,9 +10,6 @@ import type React from "react";
  *                     resolves assets, writes payload.json, signs a link.
  *   Lane B — SERVE  : GET /assets/{tenantId}/download-all/{checksum}/{zipName}
  *                     re-verifies the token, then HITs the cache or builds.
- *
- * Solid cyan-edged nodes are REAL in this demo; dashed muted nodes
- * (BFF, CDN) are NARRATED — production-only hops with no process here.
  * ------------------------------------------------------------------ */
 
 const W = 908;
@@ -20,7 +17,7 @@ const H = 452;
 const NW = 124;
 const NH = 52;
 
-type Kind = "real" | "narrated" | "store" | "decision";
+type Kind = "node" | "store" | "decision";
 
 interface NodeDef {
   x: number;
@@ -33,20 +30,20 @@ interface NodeDef {
 
 // ---- Lane A: mint the link (y ~ 48) ----
 const AY = 52;
-const A_BROWSER = { x: 16, y: AY, title: "Browser", sub: "dashboard", kind: "real" } as const;
-const A_BFF = { x: 188, y: AY, title: "Dashboard BFF", sub: "proxy · prod", kind: "narrated" } as const;
-const A_API = { x: 360, y: AY, title: "API", sub: "resolve + sign", kind: "real" } as const;
-const A_SIGNER = { x: 532, y: AY, title: "Signer", sub: "HMAC-SHA256", kind: "real" } as const;
+const A_BROWSER = { x: 16, y: AY, title: "Browser", sub: "dashboard", kind: "node" } as const;
+const A_BFF = { x: 188, y: AY, title: "Dashboard BFF", sub: "proxy · prod", kind: "node" } as const;
+const A_API = { x: 360, y: AY, title: "API", sub: "resolve + sign", kind: "node" } as const;
+const A_SIGNER = { x: 532, y: AY, title: "Signer", sub: "HMAC-SHA256", kind: "node" } as const;
 const A_PAYLOAD = { x: 360, y: 150, title: "Derived bucket", sub: "payload.json", kind: "store" } as const;
 
 // ---- Lane B: serve the archive (y ~ 276) ----
 const BY = 278;
-const B_BROWSER = { x: 16, y: BY, title: "Browser", sub: "opens link", kind: "real" } as const;
-const B_CDN = { x: 168, y: BY, title: "CDN edge", sub: "cache · prod", kind: "narrated" } as const;
-const B_ORIGIN = { x: 320, y: BY, title: "Origin worker", sub: "verify token", kind: "real" } as const;
+const B_BROWSER = { x: 16, y: BY, title: "Browser", sub: "opens link", kind: "node" } as const;
+const B_CDN = { x: 168, y: BY, title: "CDN edge", sub: "cache · prod", kind: "node" } as const;
+const B_ORIGIN = { x: 320, y: BY, title: "Origin worker", sub: "verify token", kind: "node" } as const;
 const B_CACHE = { x: 472, y: BY, title: "Cache", sub: "download.zip?", kind: "decision" } as const;
-const B_TEE = { x: 624, y: BY, title: "Tee builder", sub: "archiver · store", kind: "real" } as const;
-const B_OUT = { x: 776, y: BY, title: "ZIP response", sub: "→ browser", kind: "real" } as const;
+const B_TEE = { x: 624, y: BY, title: "Tee builder", sub: "archiver · store", kind: "node" } as const;
+const B_OUT = { x: 776, y: BY, title: "ZIP response", sub: "→ browser", kind: "node" } as const;
 const B_SOURCE = { x: 320, y: 378, title: "Source bucket", sub: "originals · read", kind: "store" } as const;
 const B_DERIVED = { x: 624, y: 378, title: "Derived bucket", sub: "download.zip · write", kind: "store" } as const;
 
@@ -65,16 +62,13 @@ function right(n: { x: number; w?: number }): number {
 function Node({ n }: { n: NodeDef }): React.JSX.Element {
   const w = n.w ?? NW;
   const c = n.x + w / 2;
-  const narrated = n.kind === "narrated";
   const store = n.kind === "store";
   const decision = n.kind === "decision";
-  const rectClass = narrated
-    ? "fill-muted/30 stroke-border"
-    : store
-      ? "fill-card stroke-primary/30"
-      : decision
-        ? "fill-secondary stroke-primary/60"
-        : "fill-secondary stroke-primary/45";
+  const rectClass = store
+    ? "fill-card stroke-primary/30"
+    : decision
+      ? "fill-secondary stroke-primary/60"
+      : "fill-secondary stroke-primary/45";
   return (
     <g>
       <rect
@@ -84,7 +78,6 @@ function Node({ n }: { n: NodeDef }): React.JSX.Element {
         height={NH}
         rx={12}
         strokeWidth={1.5}
-        strokeDasharray={narrated ? "5 4" : undefined}
         className={rectClass}
       />
       {store ? (
@@ -94,7 +87,7 @@ function Node({ n }: { n: NodeDef }): React.JSX.Element {
         x={c}
         y={n.y + 22}
         textAnchor="middle"
-        className={narrated ? "fill-muted-foreground text-[12.5px] font-medium" : "fill-foreground text-[12.5px] font-medium"}
+        className="fill-foreground text-[12.5px] font-medium"
       >
         {n.title}
       </text>
