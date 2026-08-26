@@ -94,7 +94,7 @@ export function DemoPage(): React.JSX.Element {
       {/* Intro */}
       <section className="flex flex-col gap-3">
         <span className="w-fit rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          Asset Hub · Download All
+          Media Library · Download All
         </span>
         <h1 className="max-w-2xl text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
           Watch a signed, cached, tee-streamed ZIP build in real time.

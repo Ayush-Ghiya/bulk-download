@@ -53,7 +53,7 @@ export function AppShell(): React.JSX.Element {
 
       <footer className="border-t border-border/60">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 text-xs text-muted-foreground">
-          <span className="font-mono">asset-hub · bulk-download</span>
+          <span className="font-mono">media-library · bulk-download</span>
           <span>Content-addressed cache · tee-streamed ZIP · signed links</span>
         </div>
       </footer>

@@ -67,7 +67,7 @@ function Term({ children }: { children: React.ReactNode }): React.JSX.Element {
 const PHASE_DETAIL: Record<StageId, { impl: string; prod: string }> = {
   browser: {
     impl: "useBulkDownload.start() serializes the selected asset IDs + zip name into a query string and opens exactly one EventSource per click.",
-    prod: "The Asset Hub dashboard SPA. Identical in production — the stage is narrated only because no real network latency is measured; the server just pauses 250 ms for pacing.",
+    prod: "The Media Library dashboard SPA. Identical in production — the stage is narrated only because no real network latency is measured; the server just pauses 250 ms for pacing.",
   },
   bff: {
     impl: "routes.ts emits the bff event after a fixed 250 ms sleep. No proxy process exists; the browser talks straight to the one Hono server.",
@@ -309,8 +309,8 @@ export function DeepDivePage(): React.JSX.Element {
           places at once.
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          The demo runs as a single Bun/Hono service, but every stage mirrors Asset
-          Hub's real distributed &ldquo;Download All&rdquo; flow. This page walks the
+          The demo runs as a single Bun/Hono service, but every stage mirrors the Media
+          Library's real distributed &ldquo;Download All&rdquo; flow. This page walks the
           whole pipeline end to end — the content-addressed cache, the tee-streaming
           archive builder, and the HMAC-signed expiring links — grounded in the exact
           code that ships in <Term>server/src/</Term>.

@@ -1,6 +1,6 @@
 # Bulk Download Demo
 
-A standalone extract of Asset Hub's "Download All" feature: select a handful
+A standalone extract of the Media Library's "Download All" feature: select a handful
 of assets, watch a live Server-Sent Events flow light up each production
 stage in real time, and get back a signed link to a ZIP that's built once
 and cached — with a genuinely idempotent, content-addressed cache and a

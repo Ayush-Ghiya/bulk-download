@@ -1,7 +1,7 @@
 import type React from "react";
 
 /* ------------------------------------------------------------------ *
- * A hand-built SVG of Asset Hub's production "Download All" topology.
+ * A hand-built SVG of the Media Library's production "Download All" topology.
  *
  * The flow is genuinely TWO separate HTTP requests, and the diagram is
  * split into two lanes to make that honest:

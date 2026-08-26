@@ -1,8 +1,8 @@
 # 01 — Overview
 
-## What "Download All" does in Asset Hub
+## What "Download All" does in the Media Library
 
-Asset Hub lets a user select a set of media assets (images, documents, video
+The Media Library lets a user select a set of media assets (images, documents, video
 stills — anything with a stored source object) and download them as a single
 ZIP. The dashboard shows a "Download all" button; clicking it hands the API a
 list of asset IDs and a desired archive name, and the user ends up with a
@@ -43,8 +43,8 @@ show each stage as it happens.
 
 ## Keeps / Narrates / Drops
 
-This demo is a faithful extraction, not a full re-implementation of Asset
-Hub. Some parts are real and load-bearing; some are narrated (shown in the UI
+This demo is a faithful extraction, not a full re-implementation of the
+Media Library. Some parts are real and load-bearing; some are narrated (shown in the UI
 as a labeled stage, but simulated rather than executed); some are dropped
 entirely because they add operational complexity without illustrating the
 core mechanism.

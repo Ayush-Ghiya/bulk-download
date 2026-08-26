@@ -2,7 +2,7 @@
 
 ## Production topology
 
-In Asset Hub, "Download All" spans several separately-deployed pieces. The
+In the Media Library, "Download All" spans several separately-deployed pieces. The
 diagram below matches the flow widget shown in the app (`web/src/lib/flowStages.ts`
 drives its node order and labels):
 
