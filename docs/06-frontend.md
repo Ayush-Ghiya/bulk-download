@@ -63,8 +63,11 @@ For each stage it draws a rounded `<rect>` node colored by `StageStatus`
 (`idle` / `active` / `done` / `skipped` / `error`, via lookup tables
 `statusColor`/`textColor` using Tailwind's `fill-*`/`stroke-*` utility
 classes so the widget follows the app's light/dark theme tokens rather than
-hardcoded colors), a small "live"/"narrated" caption per stage's `kind`, and
-a label. Between adjacent nodes it draws a `<line>` edge, animated with an
+hardcoded colors) and a label. A separate two-step indicator (driven by
+`STEP_LABELS`) shows whether the flow is currently in Step 1 (generate the
+link) or Step 2 (use it for the ZIP).
+
+Between adjacent nodes it draws a `<line>` edge, animated with an
 SVG `<animate>`-driven traveling dot when the *next* stage is `"active"`,
 and rendered dashed when the next stage is `"skipped"` — this is what makes
 the HIT short-circuit visually obvious: the edges into `build` and `tee`
@@ -131,7 +134,7 @@ previously-completed run's link remains directly usable for as long as its
 |---|---|
 | `web/src/App.tsx` | Top-level composition: asset grid, selection state, wires `useBulkDownload` to the widget/modal/history. |
 | `web/src/hooks/useBulkDownload.ts` | SSE client + stage-state machine; see [`05-sse-flow.md`](05-sse-flow.md). |
-| `web/src/lib/flowStages.ts` | The single source of truth for stage IDs, labels, and real/narrated `kind`. |
+| `web/src/lib/flowStages.ts` | The single source of truth for stage IDs, labels, and the two-step grouping (`step`). |
 | `web/src/lib/runHistory.ts` | IndexedDB persistence for completed runs. |
 | `web/src/components/FlowWidget.tsx` | The live SVG flow diagram. |
 | `web/src/components/BulkDownloadModal.tsx` | The result/progress dialog. |

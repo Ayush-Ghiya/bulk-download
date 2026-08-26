@@ -1,8 +1,8 @@
 # 01 — Overview
 
-## What "Download All" does in Asset Hub
+## What "Download All" does in the Media Library
 
-Asset Hub lets a user select a set of media assets (images, documents, video
+The Media Library lets a user select a set of media assets (images, documents, video
 stills — anything with a stored source object) and download them as a single
 ZIP. The dashboard shows a "Download all" button; clicking it hands the API a
 list of asset IDs and a desired archive name, and the user ends up with a
@@ -41,30 +41,30 @@ operate. This project extracts the mechanism into one small standalone
 service plus a UI that visualizes the flow live, using Server-Sent Events to
 show each stage as it happens.
 
-## Keeps / Narrates / Drops
+## What the demo implements
 
-This demo is a faithful extraction, not a full re-implementation of Asset
-Hub. Some parts are real and load-bearing; some are narrated (shown in the UI
-as a labeled stage, but simulated rather than executed); some are dropped
-entirely because they add operational complexity without illustrating the
-core mechanism.
+This demo is a faithful extraction, not a full re-implementation of the
+Media Library. It runs the real mechanism end to end, as two HTTP requests:
+Step 1 generates a signed download link; Step 2 uses that link to get the
+ZIP, either served from cache or built and tee-streamed on the spot.
 
-| Aspect | Status | Notes |
-|---|---|---|
-| Content-addressed checksum (`BulkDownloadArchive.checksum`) | **Keeps** | Real SHA-256 over `{tenantId, zipName, entries}`, order-sensitive. |
-| Tee-stream ZIP builder (`archiver` → two `PassThrough`s) | **Keeps** | Real, store-mode archiver, no per-file compression cost. |
-| Idempotent `payload.json` + `download.zip` cache | **Keeps** | Real two-directory filesystem storage, atomic temp-then-rename write. |
-| HMAC-signed, expiring URLs | **Keeps** | Real HMAC-SHA256 scheme; see [`03-signed-urls.md`](03-signed-urls.md). |
-| Origin token re-verification | **Keeps** | Real; the download route calls `signer.verify()` independently of the SSE stream. |
-| SSE stage-by-stage progress | **Keeps** | Real `streamSSE` endpoint driving the live flow widget. |
-| Dashboard BFF hop | **Narrated** | Shown as a `bff` stage in the UI; no separate BFF process exists — the browser talks directly to the one server. |
-| CDN edge | **Narrated** | Shown as a `cdn` stage; there is no CDN in front of the demo server. |
-| Multi-tenant asset catalog | **Dropped** | One hardcoded `demo-tenant`; four seeded SVG assets, no per-tenant isolation logic. |
-| Asset status filtering (e.g. only `READY` assets) | **Dropped** | `Catalog.findByIds` resolves by ID only, no status field at all. |
-| Upload / ingestion pipeline | **Dropped** | Assets are pre-seeded on disk; there is no upload path. |
-| Retry / backoff on transient failures | **Dropped** | The builder and routes fail fast; no retry policy. |
-| Rate limits / per-tenant caps | **Dropped** | No caps on asset count or archive size. |
-| Automated tests | **Dropped** | Verified manually via the browser; no test suite ships with this demo. |
+| Aspect | Notes |
+|---|---|
+| Content-addressed checksum (`BulkDownloadArchive.checksum`) | Real SHA-256 over `{tenantId, zipName, entries}`, order-sensitive. |
+| Tee-stream ZIP builder (`archiver` → two `PassThrough`s) | Real, store-mode archiver, no per-file compression cost. |
+| Idempotent `payload.json` + `download.zip` cache | Real two-directory filesystem storage, atomic temp-then-rename write. |
+| HMAC-signed, expiring URLs | Real HMAC-SHA256 scheme; see [`03-signed-urls.md`](03-signed-urls.md). |
+| Origin token re-verification | Real; the download route calls `signer.verify()` independently of the SSE stream. |
+| SSE stage-by-stage progress | Real `streamSSE` endpoint driving the live flow widget, covering both requests — including the `bff` and `cdn` stages that mark where those hops sit in the production topology. |
+
+A production deployment adds a few things this single-process demo doesn't
+need to illustrate the core mechanism: a real object store (S3 or
+equivalent) in place of the two local folders, a separately-deployed
+dashboard BFF and CDN instead of one Bun/Hono service standing in for both,
+multi-tenant asset isolation and status filtering, an upload/ingestion
+pipeline, retry/backoff policies, rate limits, and an automated test suite.
+None of those change how the core mechanism works — they're the
+operational surface around it.
 
 ## Where to go next
 

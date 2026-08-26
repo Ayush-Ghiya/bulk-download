@@ -3,9 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { ArchitectureDiagram } from "@/components/deepdive/ArchitectureDiagram";
 import { CodeBlock } from "@/components/deepdive/CodeBlock";
-import { Badge } from "@/components/ui/badge";
-import { FLOW_STAGES, type StageId } from "@/lib/flowStages";
-import { cn } from "@/lib/utils";
+import { FLOW_STAGES, STEP_LABELS, type FlowStep } from "@/lib/flowStages";
 
 /* ------------------------------------------------------------------ *
  * Section header — mirrors DemoPage's `SectionHeader` so both pages
@@ -35,22 +33,6 @@ function SectionHeader({
   );
 }
 
-function KindPill({ kind }: { kind: "real" | "narrated" }): React.JSX.Element {
-  const live = kind === "real";
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "gap-1.5 font-mono text-[10px] uppercase tracking-wider",
-        live && "border-primary/50 text-primary",
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full", live ? "bg-primary" : "bg-muted-foreground/60")} />
-      {live ? "live" : "narrated"}
-    </Badge>
-  );
-}
-
 function Term({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
@@ -59,107 +41,26 @@ function Term({ children }: { children: React.ReactNode }): React.JSX.Element {
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Per-phase augmentation: what the demo actually does, and what the
- * production system does differently. Keyed by the same StageId the
- * SSE protocol and the flow widget use, so nothing drifts.
- * ------------------------------------------------------------------ */
-const PHASE_DETAIL: Record<StageId, { impl: string; prod: string }> = {
-  browser: {
-    impl: "useBulkDownload.start() serializes the selected asset IDs + zip name into a query string and opens exactly one EventSource per click.",
-    prod: "The Asset Hub dashboard SPA. Identical in production — the stage is narrated only because no real network latency is measured; the server just pauses 250 ms for pacing.",
-  },
-  bff: {
-    impl: "routes.ts emits the bff event after a fixed 250 ms sleep. No proxy process exists; the browser talks straight to the one Hono server.",
-    prod: "A Next.js backend-for-frontend proxies the request to the API so the API credentials never reach the client.",
-  },
-  resolve: {
-    impl: "catalog.findByIds(assetIds) resolves each ID, dedupes by first occurrence, and drops unknown IDs. Zero resolved short-circuits to an error event.",
-    prod: "A multi-tenant catalog lookup with per-tenant scoping and READY-status filtering; requests for another tenant's assets are rejected.",
-  },
-  "payload-write": {
-    impl: "archive.checksum is computed, then storage.writeDerived(payloadKey, …) writes payload.json unconditionally — on every request, hit or miss.",
-    prod: "An S3 PutObject into the derived bucket; the checksum may also be indexed in DynamoDB for lifecycle/expiry bookkeeping.",
-  },
-  sign: {
-    impl: "signer.sign(bulkDownloadContentPath(checksum, zipName)) mints an HMAC-signed link with the 5-day default expiry.",
-    prod: "The same scheme, but the security key is a per-tenant secret pulled from a secrets store and rotated on a schedule.",
-  },
-  cdn: {
-    impl: "routes.ts emits the cdn event after a fixed 200 ms sleep. Nothing is cached at an edge here.",
-    prod: "A CDN edge caches successful origin responses and forwards misses to the origin worker.",
-  },
-  "origin-verify": {
-    impl: "The stream independently re-runs signer.verify() against the URL it just minted and reports { verified } — it does not trust its own signer blindly.",
-    prod: "A separate origin worker, at a different trust boundary from the API, re-verifies the token rather than trusting the upstream hop.",
-  },
-  "cache-check": {
-    impl: "storage.existsDerived(archiveKey) returns { hit }. The hook records cacheHit immediately so the widget can branch before done arrives.",
-    prod: "A HEAD / existence check against download.zip for the checksum in the derived object store.",
-  },
-  build: {
-    impl: "On a miss, ZipArchiveBuilder.writeEntries() opens and appends each source serially; the onEntry callback emits one build event per file.",
-    prod: "May run inside an SQS-driven worker so a large archive builds off the synchronous request path.",
-  },
-  tee: {
-    impl: "A single archiver is piped to two PassThroughs (client + cache) at once; the event is emitted only after the archive has fully drained.",
-    prod: "The identical tee mechanism, with the cache branch writing to the derived S3 bucket instead of a local directory.",
-  },
-  done: {
-    impl: "Terminal { downloadUrl, checksum, cacheHit, expiresAt }. The hook persists the run to IndexedDB, then closes the EventSource.",
-    prod: "The dashboard surfaces the link; opening it issues request B against the origin (which may be a HIT built by an earlier requester).",
-  },
-};
-
 interface SseRow {
   event: string;
-  kind: "real" | "narrated";
   payload: string;
   meaning: string;
 }
 
 const SSE_ROWS: SseRow[] = [
-  { event: "browser", kind: "narrated", payload: "{ message }", meaning: "Request leaves the browser — pacing only, no network hop." },
-  { event: "bff", kind: "narrated", payload: "{ message }", meaning: "Stands in for the dashboard BFF proxy hop." },
-  { event: "resolve", kind: "real", payload: "{ resolved, requested }", meaning: "catalog.findByIds ran; counts of resolved vs requested IDs." },
-  { event: "payload-write", kind: "real", payload: "{ checksum, key }", meaning: "payload.json written to the derived store for this checksum." },
-  { event: "sign", kind: "real", payload: "{ expiresAt }", meaning: "The signed download URL was minted." },
-  { event: "cdn", kind: "narrated", payload: "{ message }", meaning: "Stands in for the CDN edge hop." },
-  { event: "origin-verify", kind: "real", payload: "{ verified }", meaning: "Independent signer.verify() of the just-minted URL." },
-  { event: "cache-check", kind: "real", payload: "{ hit }", meaning: "existsDerived result — drives the HIT/MISS branch." },
-  { event: "build", kind: "real", payload: "{ name, index, total }", meaning: "One per entry as it is appended. MISS only." },
-  { event: "tee", kind: "real", payload: "{ message }", meaning: "Once, after the archive fully drains to client + cache. MISS only." },
-  { event: "done", kind: "real", payload: "{ downloadUrl, checksum, cacheHit, expiresAt }", meaning: "Terminal success. Closes the stream." },
-  { event: "error", kind: "real", payload: "{ message }", meaning: "Terminal failure — no valid assets, or a caught exception. Closes the stream." },
+  { event: "browser", payload: "{ message }", meaning: "Request leaves the browser — pacing only, no network hop." },
+  { event: "bff", payload: "{ message }", meaning: "Stands in for the dashboard BFF proxy hop." },
+  { event: "resolve", payload: "{ resolved, requested }", meaning: "catalog.findByIds ran; counts of resolved vs requested IDs." },
+  { event: "payload-write", payload: "{ checksum, key }", meaning: "payload.json written to the derived store for this checksum." },
+  { event: "sign", payload: "{ expiresAt }", meaning: "The signed download URL was minted." },
+  { event: "cdn", payload: "{ message }", meaning: "Stands in for the CDN edge hop." },
+  { event: "origin-verify", payload: "{ verified }", meaning: "Independent signer.verify() of the just-minted URL." },
+  { event: "cache-check", payload: "{ hit }", meaning: "existsDerived result — drives the HIT/MISS branch." },
+  { event: "build", payload: "{ name, index, total }", meaning: "One per entry as it is appended. MISS only." },
+  { event: "tee", payload: "{ message }", meaning: "Once, after the archive fully drains to client + cache. MISS only." },
+  { event: "done", payload: "{ downloadUrl, checksum, cacheHit, expiresAt }", meaning: "Terminal success. Closes the stream." },
+  { event: "error", payload: "{ message }", meaning: "Terminal failure — no valid assets, or a caught exception. Closes the stream." },
 ];
-
-interface SimplifyRow {
-  aspect: string;
-  status: "Keeps" | "Narrates" | "Drops";
-  note: string;
-}
-
-const SIMPLIFY_ROWS: SimplifyRow[] = [
-  { aspect: "Content-addressed checksum", status: "Keeps", note: "Real SHA-256 over { tenantId, zipName, entries }, order-sensitive." },
-  { aspect: "Tee-stream ZIP builder", status: "Keeps", note: "Real store-mode archiver piped to two PassThroughs." },
-  { aspect: "Idempotent payload.json + download.zip cache", status: "Keeps", note: "Real two-directory storage; download.zip is written atomically (temp-then-rename), while payload.json is a plain overwrite — safe because it's idempotent (same checksum ⇒ same bytes)." },
-  { aspect: "HMAC-signed, expiring URLs", status: "Keeps", note: "Real HMAC-SHA256 scheme; 5-day default, 7-day cap." },
-  { aspect: "Origin token re-verification", status: "Keeps", note: "The download route calls signer.verify() independently of the stream." },
-  { aspect: "SSE stage-by-stage progress", status: "Keeps", note: "Real streamSSE endpoint driving the live flow widget." },
-  { aspect: "Dashboard BFF hop", status: "Narrates", note: "A bff event fires on a delay; no separate proxy process exists." },
-  { aspect: "CDN edge", status: "Narrates", note: "A cdn event fires on a delay; nothing caches at an edge." },
-  { aspect: "Real S3 / DynamoDB / CDN / SQS", status: "Drops", note: "Two local folders stand in for two buckets; no cloud services run." },
-  { aspect: "Multi-tenant catalog", status: "Drops", note: "One hardcoded demo-tenant and four seeded SVGs." },
-  { aspect: "READY-status filtering", status: "Drops", note: "findByIds resolves by ID only — there is no status field." },
-  { aspect: "Source-retry / backoff", status: "Drops", note: "The builder and routes fail fast; missing sources are just skipped." },
-  { aspect: "Rate limits / per-tenant caps", status: "Drops", note: "No caps on asset count or archive size." },
-];
-
-const STATUS_STYLES: Record<SimplifyRow["status"], string> = {
-  Keeps: "border-primary/50 text-primary",
-  Narrates: "border-border text-foreground",
-  Drops: "border-border text-muted-foreground",
-};
 
 /* ------------------------------------------------------------------ *
  * Real, verbatim excerpts from the server source (kept short).
@@ -309,49 +210,33 @@ export function DeepDivePage(): React.JSX.Element {
           places at once.
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          The demo runs as a single Bun/Hono service, but every stage mirrors Asset
-          Hub's real distributed &ldquo;Download All&rdquo; flow. This page walks the
+          The demo runs as a single Bun/Hono service, but every stage mirrors the Media
+          Library's real distributed &ldquo;Download All&rdquo; flow. This page walks the
           whole pipeline end to end — the content-addressed cache, the tee-streaming
           archive builder, and the HMAC-signed expiring links — grounded in the exact
           code that ships in <Term>server/src/</Term>.
         </p>
-
-        {/* Legend */}
-        <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <KindPill kind="real" />
-            <span>executes real backend work in this demo</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <KindPill kind="narrated" />
-            <span>production-only hop, narrated for completeness</span>
-          </div>
-        </div>
       </header>
 
       {/* 01 — Architecture */}
       <section className="flex flex-col gap-5">
         <SectionHeader index="01" label="Topology" title="The production architecture" />
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          &ldquo;Download All&rdquo; is genuinely <span className="text-foreground">two
-          separate HTTP requests</span>. First the dashboard opens an SSE stream that
-          resolves the selection, writes a <Term>payload.json</Term>, and signs a link
-          (lane A). Then the browser opens that link as a second request against the
-          origin, which re-verifies the token and either serves the cached archive or
-          builds it (lane B). Splitting the diagram this way is the honest picture: the
-          stream never carries archive bytes — only progress events.
+          First the dashboard asks the server to prepare the download over a
+          streaming connection — the server resolves the selection, saves a
+          record of it, and signs a link (lane A). Then the browser opens
+          that link as a second request, and the server re-verifies it and
+          either serves a cached archive or builds one (lane B). The
+          streaming connection never carries the ZIP itself — only progress
+          updates.
         </p>
         <div className="edge-glow relative overflow-hidden rounded-2xl border border-border bg-card/60 p-4 shadow-2xl shadow-black/40 sm:p-8">
           <ArchitectureDiagram />
         </div>
         <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">
-          Solid cyan-edged nodes are real in this demo; dashed nodes
-          (<span className="text-foreground">Dashboard BFF</span>,{" "}
-          <span className="text-foreground">CDN edge</span>) are narrated. The two
-          &ldquo;buckets&rdquo; are two local folders — <Term>server/storage/source/</Term>{" "}
-          (read-only originals) and <Term>server/storage/derived/</Term> (regenerable
-          payloads and archives) — but the read-only-vs-derived separation is exactly the
-          same one two S3 buckets would give you.
+          The two &ldquo;buckets&rdquo; are two local folders — read-only
+          originals and regenerable payloads/archives — the same
+          read-only-vs-derived split two S3 buckets would give you.
         </p>
       </section>
 
@@ -359,54 +244,44 @@ export function DeepDivePage(): React.JSX.Element {
       <section className="flex flex-col gap-5">
         <SectionHeader index="02" label="Pipeline" title="Phase by phase" />
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          The eleven phases below are the single source of truth shared by the flow
-          widget, the SSE protocol, and this page (<Term>web/src/lib/flowStages.ts</Term>).
-          For each one: what really happens, where it lives in this demo, and what the
-          production system does differently.
+          The flow is two HTTP requests. First the browser asks the server to prepare a
+          download and gets back a signed link; then it opens that link to actually
+          receive the ZIP. Here is every phase of both, in order.
         </p>
-        <ol className="flex flex-col gap-3">
-          {FLOW_STAGES.map((stage, i) => {
-            const detail = PHASE_DETAIL[stage.id];
-            return (
-              <li
-                key={stage.id}
-                className="rounded-xl border border-border bg-card p-4 sm:p-5"
-              >
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary font-mono text-[11px] font-semibold text-foreground">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">{stage.node}</span>
-                  <span className="font-mono text-[11px] text-muted-foreground">{stage.label}</span>
-                  <span className="ml-auto">
-                    <KindPill kind={stage.kind === "real" ? "real" : "narrated"} />
-                  </span>
-                </div>
-                <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-                  {stage.description}
-                </p>
-                <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-                  <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary/90">
-                      In this demo
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                      {detail.impl}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                      In production
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                      {detail.prod}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="flex flex-col gap-8">
+          {([1, 2] as FlowStep[]).map((step) => (
+            <div key={step} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {STEP_LABELS[step].title}
+                </h3>
+                <p className="text-xs text-muted-foreground">{STEP_LABELS[step].caption}</p>
+              </div>
+              <ol className="flex flex-col gap-3">
+                {FLOW_STAGES.filter((s) => s.step === step).map((stage) => {
+                  const n = FLOW_STAGES.indexOf(stage) + 1;
+                  return (
+                    <li
+                      key={stage.id}
+                      className="rounded-xl border border-border bg-card p-4 sm:p-5"
+                    >
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-secondary font-mono text-[11px] font-semibold text-foreground">
+                          {n}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">{stage.node}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{stage.label}</span>
+                      </div>
+                      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+                        {stage.description}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* 03 — Content-addressed cache */}
@@ -603,7 +478,6 @@ export function DeepDivePage(): React.JSX.Element {
               <thead>
                 <tr className="border-b border-border">
                   <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Event</th>
-                  <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Kind</th>
                   <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Payload</th>
                   <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Meaning</th>
                 </tr>
@@ -612,16 +486,6 @@ export function DeepDivePage(): React.JSX.Element {
                 {SSE_ROWS.map((row) => (
                   <tr key={row.event} className="border-b border-border/60 last:border-0 align-top">
                     <td className="px-3 py-2.5 font-mono text-[12px] text-foreground">{row.event}</td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={cn(
-                          "font-mono text-[10px] uppercase tracking-wider",
-                          row.kind === "real" ? "text-primary" : "text-muted-foreground",
-                        )}
-                      >
-                        {row.kind === "real" ? "live" : "narrated"}
-                      </span>
-                    </td>
                     <td className="px-3 py-2.5 font-mono text-[10.5px] text-muted-foreground">{row.payload}</td>
                     <td className="px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{row.meaning}</td>
                   </tr>
@@ -629,44 +493,6 @@ export function DeepDivePage(): React.JSX.Element {
               </tbody>
             </table>
           </div>
-        </div>
-      </section>
-
-      {/* 07 — What this demo simplifies */}
-      <section className="flex flex-col gap-5">
-        <SectionHeader index="07" label="Honesty" title="What this demo keeps, narrates, and drops" />
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          This is a faithful extraction of the mechanism, not a re-implementation of Asset
-          Hub. Some parts are real and load-bearing; some are narrated for the widget's
-          benefit; some are dropped because they add operational weight without illustrating
-          the core idea.
-        </p>
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <table className="w-full min-w-[560px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aspect</th>
-                <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SIMPLIFY_ROWS.map((row) => (
-                <tr key={row.aspect} className="border-b border-border/60 last:border-0 align-top">
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{row.aspect}</td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant="outline"
-                      className={cn("font-mono text-[10px] uppercase tracking-wider", STATUS_STYLES[row.status])}
-                    >
-                      {row.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-xs leading-relaxed text-muted-foreground">{row.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </section>
 

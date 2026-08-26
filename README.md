@@ -1,10 +1,14 @@
 # Bulk Download Demo
 
-A standalone extract of Asset Hub's "Download All" feature: select a handful
-of assets, watch a live Server-Sent Events flow light up each production
-stage in real time, and get back a signed link to a ZIP that's built once
-and cached — with a genuinely idempotent, content-addressed cache and a
-tee-streaming archive builder underneath, not a toy simulation of one.
+A standalone extract of the Media Library's "Download All" feature: select a handful
+of assets and watch a live Server-Sent Events flow light up the real,
+two-step production flow in real time — Step 1 generates a signed download
+link (resolve the selection, write a record of it, sign it); Step 2 uses
+that link to get the ZIP (verify the token, check the cache, then either
+serve a cached archive or build one, streaming it to the client and the
+cache at the same time). It's a genuinely idempotent, content-addressed
+cache and a tee-streaming archive builder underneath, not a toy simulation
+of one.
 
 ## What it demonstrates
 
@@ -19,10 +23,11 @@ tee-streaming archive builder underneath, not a toy simulation of one.
 - **HMAC-signed, expiring links** — `/assets/{tenant}/download-all/{checksum}/{zipName}`
   URLs signed with `base64url(HMAC-SHA256(key, pathname + "\n" + expires))`,
   independently re-verified by the origin route rather than trusted blindly.
-- **Live SSE flow visualization** — a hand-built SVG widget tracks each
-  production stage (some real, some narrated) as `GET
-  /api/bulk-download/stream` emits them, including a visible HIT
-  short-circuit that skips the build/tee stages.
+- **Live SSE flow visualization** — a hand-built SVG widget with an
+  animated particle pipeline tracks every stage of the real two-step flow
+  (Step 1: generate the signed link; Step 2: use it to serve or build the
+  ZIP) as `GET /api/bulk-download/stream` emits them, including a visible
+  HIT short-circuit that skips the build/tee stages.
 - **IndexedDB run history** — every completed run is persisted client-side
   so past download links stay reachable without re-running the flow.
 
@@ -56,7 +61,7 @@ skipped).
 
 ## Docs
 
-- [`docs/01-overview.md`](docs/01-overview.md) — what the real feature does, the business problem, and what this demo keeps / narrates / drops.
+- [`docs/01-overview.md`](docs/01-overview.md) — what the real feature does, the business problem, and what this demo implements.
 - [`docs/02-architecture.md`](docs/02-architecture.md) — full production topology and how this one service maps onto it, with a diagram.
 - [`docs/03-signed-urls.md`](docs/03-signed-urls.md) — the HMAC token scheme, link shape, expiry, and origin re-verification.
 - [`docs/04-tee-stream-and-cache.md`](docs/04-tee-stream-and-cache.md) — the centerpiece: the checksum, the tee-streaming builder, and the atomic cache write.

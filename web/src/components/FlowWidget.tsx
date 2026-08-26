@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { FLOW_STAGES } from "@/lib/flowStages";
+import { FLOW_STAGES, STEP_LABELS, type FlowStep } from "@/lib/flowStages";
 import type { StageState, StageStatus } from "@/hooks/useBulkDownload";
 import { cn } from "@/lib/utils";
 
@@ -329,6 +329,42 @@ export function FlowWidget({
   const running = !isIdle && !hasError && targetStop < route.numStops - 1;
   const moving = !isIdle;
 
+  // Greatest on-route stop the particle has reached — the node it currently
+  // occupies. Node lit-state is derived from THIS (the same `pos` that drives
+  // the trail line), so the box and the line light in lockstep.
+  let frontierStop = -1;
+  for (let i = 0; i < FLOW_STAGES.length; i++) {
+    const s = stageToStop(mode, i);
+    if (s >= 0 && s <= pos + 0.001 && s > frontierStop) frontierStop = s;
+  }
+  const settledAtEnd =
+    targetStop === route.numStops - 1 && Math.abs(pos - targetStop) < 0.05;
+
+  function nodeStateFromPos(i: number): StageStatus {
+    const raw = byId.get(FLOW_STAGES[i].id) ?? "idle";
+    if (raw === "error") return "error";
+    if (raw === "skipped") return "skipped"; // build/tee on a HIT bypass
+    // At true rest (no run in progress) `pos` sits at 0, which trivially
+    // equals stop 0's position — without this guard the first node would
+    // read as permanently "active" even though nothing is running.
+    if (isIdle) return "idle";
+    const s = stageToStop(mode, i);
+    if (s < 0) return "idle";
+    if (s > pos + 0.001) return "idle"; // particle hasn't arrived yet
+    if (s === frontierStop) return settledAtEnd ? "done" : "active";
+    return "done"; // particle has already passed this node
+  }
+
+  const frontierStageIdx = (() => {
+    let idx = 0;
+    for (let i = 0; i < FLOW_STAGES.length; i++) {
+      const s = stageToStop(mode, i);
+      if (s >= 0 && s <= Math.round(pos) && s <= frontierStop) idx = i;
+    }
+    return idx;
+  })();
+  const activeStep: FlowStep = isIdle ? 1 : FLOW_STAGES[frontierStageIdx].step;
+
   // Comet trail — a few fading dots just behind the particle.
   const cometStep = 11;
   const comet = moving
@@ -376,6 +412,34 @@ export function FlowWidget({
         </div>
       </div>
 
+      {/* Two-step indicator */}
+      <div className="grid grid-cols-2 gap-2">
+        {([1, 2] as FlowStep[]).map((step) => {
+          const on = !isIdle && activeStep === step;
+          return (
+            <div
+              key={step}
+              className={cn(
+                "rounded-lg border px-3 py-2 transition-colors",
+                on ? "glow-sm border-primary/60 bg-secondary" : "border-border bg-card/50",
+              )}
+            >
+              <div
+                className={cn(
+                  "font-mono text-[11px] font-semibold",
+                  on ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                {STEP_LABELS[step].title}
+              </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                {STEP_LABELS[step].caption}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="w-full overflow-x-auto">
         <svg
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -412,11 +476,10 @@ export function FlowWidget({
 
           {/* Nodes. */}
           {FLOW_STAGES.map((stage, i) => {
-            const state: StageStatus = byId.get(stage.id) ?? "idle";
+            const state: StageStatus = nodeStateFromPos(i);
             const c = nodeCenter(i);
             const x = nodeX(i);
             const y = nodeY(i);
-            const narrated = stage.kind === "narrated";
             const isActive = state === "active";
             const isDone = state === "done";
             const isSkipped = state === "skipped";
@@ -439,7 +502,7 @@ export function FlowWidget({
               (isSkipped || (!isActive && !isDone && !isError)) && "fill-muted-foreground",
             );
 
-            const strokeDasharray = narrated ? "5 4" : isSkipped ? "3 4" : undefined;
+            const strokeDasharray = isSkipped ? "3 4" : undefined;
 
             return (
               <g key={stage.id} opacity={isSkipped ? 0.5 : 1}>
@@ -480,22 +543,11 @@ export function FlowWidget({
 
                 <text
                   x={c.x}
-                  y={c.y - 3}
+                  y={c.y + 4}
                   textAnchor="middle"
                   className={nameClass}
                 >
                   {stage.node}
-                </text>
-                <text
-                  x={c.x}
-                  y={c.y + 13}
-                  textAnchor="middle"
-                  className={cn(
-                    "font-mono text-[8.5px] uppercase tracking-[0.12em]",
-                    isActive ? "fill-primary/80" : "fill-muted-foreground/70",
-                  )}
-                >
-                  {narrated ? "narrated" : "live"}
                 </text>
                 <text
                   x={c.x}

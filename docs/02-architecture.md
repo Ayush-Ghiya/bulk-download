@@ -2,7 +2,7 @@
 
 ## Production topology
 
-In Asset Hub, "Download All" spans several separately-deployed pieces. The
+In the Media Library, "Download All" spans several separately-deployed pieces. The
 diagram below matches the flow widget shown in the app (`web/src/lib/flowStages.ts`
 drives its node order and labels):
 
@@ -50,24 +50,35 @@ flowchart LR
 
 This project runs the whole thing as **one Bun/Hono service** (`server/src/`)
 plus a static Vite/React frontend (`web/src/`), talking over a dev proxy in
-development. There is no separate BFF process and no CDN — those hops are
-**narrated**: the SSE stream emits a `browser` and `bff` event, and a `cdn`
-event, purely so the flow widget can show where they'd sit in production,
-but no corresponding network hop or process actually exists for them.
+development. The production topology above is really two separate HTTP
+requests, and the demo keeps that shape even though one process plays every
+role:
 
-| Diagram node | Demo reality | Real / Narrated |
-|---|---|---|
-| Browser | `web/src/` — the Vite/React app | Real |
-| Dashboard BFF | Nothing runs; `bff` SSE event is emitted with a fixed delay | **Narrated** |
-| API (resolve + payload + sign) | `server/src/routes.ts` `GET /api/bulk-download/stream` handler | Real |
-| Derived bucket: payload.json | `server/storage/derived/bulk-download/{checksum}/payload.json` on local disk, via `server/src/storage.ts` | Real |
-| Signer | `server/src/signer.ts` `UrlSigner` | Real |
-| CDN edge | Nothing runs; `cdn` SSE event is emitted with a fixed delay | **Narrated** |
-| Origin worker: verify | `server/src/routes.ts` `GET /assets/:tenantId/download-all/:checksum/:zipName` route, which calls `signer.verify()` independently of the SSE stream's own `origin-verify` check | Real |
-| Cache check | `Storage.existsDerived()` against `download.zip` for the checksum | Real |
-| Tee-stream builder | `server/src/zip-archive-builder.ts` `ZipArchiveBuilder` | Real |
-| Derived bucket: download.zip | `server/storage/derived/bulk-download/{checksum}/download.zip` | Real |
-| Source bucket | `server/storage/source/` (four seeded SVGs) | Real |
+- **Mint lane (Step 1)** — browser → dashboard BFF → API, which resolves
+  the selection, writes `payload.json`, and signs the download URL.
+- **Serve lane (Step 2)** — browser opens the signed URL, which travels
+  through the CDN edge to the origin worker, which re-verifies the token,
+  checks the cache, and either serves the cached `download.zip` or runs the
+  tee-stream builder.
+
+There is no separately-deployed BFF process or CDN in front of this demo —
+the `bff` and `cdn` SSE events mark where those hops sit in the mint and
+serve lanes so the flow widget can show the full topology, even though the
+one Bun/Hono service handles the request directly at that point.
+
+| Diagram node | What it does |
+|---|---|
+| Browser | `web/src/` — the Vite/React app. |
+| Dashboard BFF | Marks the proxy hop that forwards the browser's request to the API. |
+| API (resolve + payload + sign) | `server/src/routes.ts` `GET /api/bulk-download/stream` handler. |
+| Derived bucket: payload.json | `server/storage/derived/bulk-download/{checksum}/payload.json` on local disk, via `server/src/storage.ts`. |
+| Signer | `server/src/signer.ts` `UrlSigner`. |
+| CDN edge | Marks the edge hop the signed link travels through before reaching the origin. |
+| Origin worker: verify | `server/src/routes.ts` `GET /assets/:tenantId/download-all/:checksum/:zipName` route, which calls `signer.verify()` independently of the SSE stream's own `origin-verify` check. |
+| Cache check | `Storage.existsDerived()` against `download.zip` for the checksum. |
+| Tee-stream builder | `server/src/zip-archive-builder.ts` `ZipArchiveBuilder`. |
+| Derived bucket: download.zip | `server/storage/derived/bulk-download/{checksum}/download.zip`. |
+| Source bucket | `server/storage/source/` (four seeded SVGs). |
 
 Two buckets are two plain directories here (`server/storage/source/` and
 `server/storage/derived/`) instead of two S3 buckets, but the separation is
