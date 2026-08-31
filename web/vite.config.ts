@@ -8,6 +8,11 @@ export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
+  build: {
+    // Emit built JS/CSS under /static/ (not the default /assets/) so they
+    // don't collide with the /assets/... signed-download route on Vercel.
+    assetsDir: "static",
+  },
   server: {
     proxy: {
       "/api": "http://localhost:3001",
