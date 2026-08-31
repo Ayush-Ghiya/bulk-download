@@ -5,7 +5,7 @@
   "workspaces": ["server", "web"],
   "scripts": {
     "dev": "bun run --filter '*' dev",
-    "build": "bun run --filter bulk-download-demo-web build",
+    "build": "cd web && bun run build",
     "typecheck": "bun run --filter '*' typecheck",
     "preview": "bun run --filter bulk-download-demo-web preview",
     "start:server": "bun run --filter bulk-download-demo-server start"
