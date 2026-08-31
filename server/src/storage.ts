@@ -1,5 +1,5 @@
 import { Readable, Writable } from "node:stream";
-import { SEED_SOURCES } from "./sources";
+import { SEED_SOURCES } from "./sources.js";
 
 /**
  * In-memory storage. Sources come from the bundled SEED_SOURCES; the

@@ -4,8 +4,8 @@ import archiver from "archiver";
 import {
   BulkDownloadArchive,
   type BulkDownloadEntry,
-} from "./bulk-download";
-import type { Storage } from "./storage";
+} from "./bulk-download.js";
+import type { Storage } from "./storage.js";
 
 export interface BuildProgress {
   onEntry?(name: string, index: number, total: number): void;

@@ -1,11 +1,11 @@
 import { Readable } from "node:stream";
 import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { BulkDownloadArchive } from "./bulk-download";
-import type { Catalog } from "./catalog";
-import { bulkDownloadContentPath, type UrlSigner } from "./signer";
-import type { Storage } from "./storage";
-import type { ZipArchiveBuilder } from "./zip-archive-builder";
+import { BulkDownloadArchive } from "./bulk-download.js";
+import type { Catalog } from "./catalog.js";
+import { bulkDownloadContentPath, type UrlSigner } from "./signer.js";
+import type { Storage } from "./storage.js";
+import type { ZipArchiveBuilder } from "./zip-archive-builder.js";
 
 const CHECKSUM = /^[a-f0-9]{64}$/;
 const TENANT_ID = "demo-tenant";

@@ -1,4 +1,4 @@
-import type { Storage } from "./storage";
+import type { Storage } from "./storage.js";
 
 export interface CatalogAsset {
   id: string;

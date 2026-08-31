@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { Catalog } from "./catalog";
-import { registerRoutes } from "./routes";
-import { UrlSigner } from "./signer";
-import { Storage } from "./storage";
-import { ZipArchiveBuilder } from "./zip-archive-builder";
+import { Catalog } from "./catalog.js";
+import { registerRoutes } from "./routes.js";
+import { UrlSigner } from "./signer.js";
+import { Storage } from "./storage.js";
+import { ZipArchiveBuilder } from "./zip-archive-builder.js";
 
 const SECURITY_KEY = "demo-security-key"; // demo-only
 const TENANT_ID = "demo-tenant";

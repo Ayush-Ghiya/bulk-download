@@ -1,5 +1,5 @@
-import { createApp } from "../server/src/app";
-import { handle } from "../server/src/vercel-handler";
+import { createApp } from "../server/src/app.js";
+import { handle } from "../server/src/vercel-handler.js";
 
 // Runs on Vercel's Node.js runtime (default) — required for archiver and
 // Node streams. createApp() runs once at module load; the resulting app's
