@@ -87,14 +87,17 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
         await sleep(200);
 
         const signed = signer.sign(bulkDownloadContentPath(checksum, zipName));
+        // The signed link carries the selection so the serve request can
+        // rebuild the archive without any state this stream wrote.
+        const idsParam = encodeURIComponent(assets.map((a) => a.id).join(","));
+        const downloadUrl = `${signed.url}&ids=${idsParam}`;
         await send("sign", { expiresAt: signed.expiresAt });
         await sleep(200);
 
         await send("cdn", { message: "Signed link travels through the CDN edge" });
         await sleep(250);
 
-        const pathname = new URL(signed.url).pathname;
-        const verified = signer.verify(pathname, signed.token, signed.expires);
+        const verified = signer.verify(signed.pathname, signed.token, signed.expires);
         await send("origin-verify", { verified });
         await sleep(200);
 
@@ -103,7 +106,7 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
         await send("cache-check", { hit });
 
         if (hit) {
-          await send("done", { downloadUrl: signed.url, checksum, cacheHit: true, expiresAt: signed.expiresAt });
+          await send("done", { downloadUrl, checksum, cacheHit: true, expiresAt: signed.expiresAt });
           return;
         }
 
@@ -123,7 +126,7 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
         // cache, so the stage sweep reads build(s) → tee → done.
         await send("tee", { message: "Streamed to client and cache at once" });
 
-        await send("done", { downloadUrl: signed.url, checksum, cacheHit: false, expiresAt: signed.expiresAt });
+        await send("done", { downloadUrl, checksum, cacheHit: false, expiresAt: signed.expiresAt });
       } catch (err) {
         await send("error", { message: err instanceof Error ? err.message : "stream failed" });
       }
@@ -135,6 +138,10 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
     const zipName = c.req.param("zipName");
     const token = c.req.query("token") ?? "";
     const expires = Number(c.req.query("expires") ?? "0");
+    const ids = (c.req.query("ids") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     if (!CHECKSUM.test(checksum)) return c.text("Unknown checksum", 404);
 
@@ -143,15 +150,27 @@ export function registerRoutes(app: Hono, deps: RouteDeps): void {
       return c.text("Invalid or expired token", 401);
     }
 
-    const payload = await storage.readDerived(BulkDownloadArchive.payloadKey(checksum));
-    const archive = payload ? BulkDownloadArchive.parsePayload(payload) : null;
-    if (!archive) return c.text("Unknown checksum", 404);
+    // Stateless: rebuild the archive from the (catalog-resolved) selection
+    // carried in the signed link, then confirm it hashes to the signed
+    // checksum. This means the serve request never depends on state the
+    // earlier stream request wrote — which matters on serverless, where the
+    // two requests can hit different instances.
+    const assets = catalog.findByIds(ids);
+    if (assets.length === 0) return c.text("Unknown checksum", 404);
+    const entries = assets.map((a) => ({
+      assetId: a.id,
+      sourceKey: a.sourceKey,
+      entryName: a.name,
+      bytes: a.bytes,
+    }));
+    const archive = new BulkDownloadArchive({ tenantId: TENANT_ID, zipName, entries });
+    if (archive.checksum !== checksum) return c.text("Unknown checksum", 404);
 
+    // Best-effort cache: serve the pre-built ZIP if this warm instance has
+    // it, otherwise rebuild on the fly.
     const archiveKey = BulkDownloadArchive.archiveKey(checksum);
     const cached = await storage.readDerived(archiveKey);
-    const body = cached
-      ? Readable.from(cached)
-      : builder.build(archive);
+    const body = cached ? Readable.from(cached) : builder.build(archive);
 
     const webStream = Readable.toWeb(body as Readable) as ReadableStream;
     return new Response(webStream, {

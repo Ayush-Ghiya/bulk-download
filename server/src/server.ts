@@ -14,7 +14,6 @@ const storage = new Storage();
 const catalog = new Catalog(storage);
 const signer = new UrlSigner({
   securityKey: SECURITY_KEY,
-  baseUrl: `http://localhost:${PORT}`,
   tenantId: TENANT_ID,
 });
 const builder = new ZipArchiveBuilder(storage);

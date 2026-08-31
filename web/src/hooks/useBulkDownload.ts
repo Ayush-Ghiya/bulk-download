@@ -110,7 +110,11 @@ export function useBulkDownload(): UseBulkDownload {
             return;
           }
           if (name === "done") {
-            setDownloadUrl(data.downloadUrl);
+            // The server sends a relative download URL; resolve it against
+            // the current origin so it works on any deployment (and locally
+            // through the Vite dev proxy).
+            const absUrl = new URL(data.downloadUrl, window.location.origin).href;
+            setDownloadUrl(absUrl);
             setChecksum(data.checksum);
             setCacheHit(Boolean(data.cacheHit));
             finish(Boolean(data.cacheHit));
@@ -123,7 +127,7 @@ export function useBulkDownload(): UseBulkDownload {
               zipName,
               checksum: data.checksum,
               cacheHit: Boolean(data.cacheHit),
-              downloadUrl: data.downloadUrl,
+              downloadUrl: absUrl,
               expiresAt: data.expiresAt,
             });
             return;
