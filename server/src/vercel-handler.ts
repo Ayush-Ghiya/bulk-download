@@ -1,5 +1,7 @@
-// Re-export Hono's Vercel adapter from inside the server workspace, where
-// the `hono` package resolves (it is a server dependency, not hoisted to the
-// repo root). The Vercel function imports `handle` from here so its module
-// graph resolves `hono/vercel` correctly when bundled.
-export { handle } from "hono/vercel";
+// Vercel runs this function on the Node.js runtime (required for archiver +
+// Node streams), so it receives Node's (req, res) objects — NOT a Web Request.
+// hono/vercel's handle is Edge-only (it calls app.fetch(req) expecting a Web
+// Request, so req.headers.get blows up on Node). @hono/node-server/vercel is
+// the Node adapter that bridges Node req/res <-> Hono. Re-exported from inside
+// the server workspace where the dependency resolves.
+export { handle } from "@hono/node-server/vercel";
