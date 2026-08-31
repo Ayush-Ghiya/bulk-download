@@ -1,5 +1,3 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Catalog } from "./catalog.ts";
@@ -12,11 +10,7 @@ const PORT = 3001;
 const SECURITY_KEY = "demo-security-key"; // demo-only
 const TENANT_ID = "demo-tenant";
 
-const sourceDir = join(import.meta.dir, "..", "storage", "source");
-const derivedDir = join(import.meta.dir, "..", "storage", "derived");
-mkdirSync(derivedDir, { recursive: true });
-
-const storage = new Storage({ sourceDir, derivedDir });
+const storage = new Storage();
 const catalog = new Catalog(storage);
 const signer = new UrlSigner({
   securityKey: SECURITY_KEY,
