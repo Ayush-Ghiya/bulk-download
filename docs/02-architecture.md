@@ -71,20 +71,24 @@ one Bun/Hono service handles the request directly at that point.
 | Browser | `web/src/` — the Vite/React app. |
 | Dashboard BFF | Marks the proxy hop that forwards the browser's request to the API. |
 | API (resolve + payload + sign) | `server/src/routes.ts` `GET /api/bulk-download/stream` handler. |
-| Derived bucket: payload.json | `server/storage/derived/bulk-download/{checksum}/payload.json` on local disk, via `server/src/storage.ts`. |
+| Derived bucket: payload.json | Key `bulk-download/{checksum}/payload.json` in the in-memory derived store, via `server/src/storage.ts`. |
 | Signer | `server/src/signer.ts` `UrlSigner`. |
 | CDN edge | Marks the edge hop the signed link travels through before reaching the origin. |
-| Origin worker: verify | `server/src/routes.ts` `GET /assets/:tenantId/download-all/:checksum/:zipName` route, which calls `signer.verify()` independently of the SSE stream's own `origin-verify` check. |
-| Cache check | `Storage.existsDerived()` against `download.zip` for the checksum. |
+| Origin worker: verify | `server/src/routes.ts` `GET /assets/:tenantId/download-all/:checksum/:zipName` route, which calls `signer.verify()` independently of the SSE stream's own `origin-verify` check, then rebuilds the archive from the ids in the signed link and confirms it hashes to the checksum. |
+| Cache check | `Storage.existsDerived()` against the `download.zip` key for the checksum. |
 | Tee-stream builder | `server/src/zip-archive-builder.ts` `ZipArchiveBuilder`. |
-| Derived bucket: download.zip | `server/storage/derived/bulk-download/{checksum}/download.zip`. |
-| Source bucket | `server/storage/source/` (four seeded SVGs). |
+| Derived bucket: download.zip | Key `bulk-download/{checksum}/download.zip` in the in-memory derived store. |
+| Source bucket | The four seeded SVGs, bundled in `server/src/sources.ts`. |
 
-Two buckets are two plain directories here (`server/storage/source/` and
-`server/storage/derived/`) instead of two S3 buckets, but the separation is
-the same: originals are read-only inputs, derived objects are
-regenerable/cacheable outputs. `server/storage/derived/` is gitignored —
-it's runtime-generated, not source.
+The two "buckets" aren't real object storage here: sources are bundled
+in-process (`server/src/sources.ts`) and derived objects live in an
+in-memory map keyed by checksum (`server/src/storage.ts`). The separation is
+the same — originals are read-only inputs, derived objects are
+regenerable/cacheable outputs. On serverless this map is per-instance and
+best-effort, which is safe because the download is **stateless**: the serve
+route rebuilds the archive from the ids carried in the signed link (and
+re-checks its checksum), so it never depends on what the earlier request
+wrote.
 
 One deliberate simplification worth calling out: because there's no real CDN
 or BFF, the SSE stream's `origin-verify` stage and the actual origin route's

@@ -13,12 +13,14 @@ export function bulkDownloadContentPath(
 
 export interface UrlSignerConfig {
   securityKey: string;
-  baseUrl: string;
   tenantId: string;
 }
 
 export interface SignResult {
+  /** Relative URL: pathname + `?token=…&expires=…`. Resolves against
+   *  whatever origin serves the app. */
   url: string;
+  pathname: string;
   token: string;
   expires: number;
   expiresAt: string;
@@ -30,12 +32,10 @@ export interface SignResult {
  */
 export class UrlSigner {
   private readonly securityKey: string;
-  private readonly baseUrl: string;
   private readonly tenantId: string;
 
   constructor(config: UrlSignerConfig) {
     this.securityKey = config.securityKey;
-    this.baseUrl = config.baseUrl.replace(/\/$/, "");
     this.tenantId = config.tenantId;
   }
 
@@ -57,12 +57,11 @@ export class UrlSigner {
     const expires = now + expiresIn;
     const pathname = this.fullPathname(contentPath);
     const token = this.token(pathname, expires);
-    const url = new URL(this.baseUrl);
-    url.pathname = pathname;
-    url.searchParams.set("token", token);
-    url.searchParams.set("expires", String(expires));
+    const params = new URLSearchParams({ token, expires: String(expires) });
+    const url = `${pathname}?${params.toString()}`;
     return {
-      url: url.toString(),
+      url,
+      pathname,
       token,
       expires,
       expiresAt: new Date(expires * 1000).toISOString(),

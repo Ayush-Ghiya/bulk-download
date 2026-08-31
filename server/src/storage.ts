@@ -1,80 +1,59 @@
-import { createReadStream, createWriteStream, statSync } from "node:fs";
-import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { Readable, Writable } from "node:stream";
+import { SEED_SOURCES } from "./sources.ts";
 
-export interface StorageConfig {
-  sourceDir: string;
-  derivedDir: string;
-}
-
+/**
+ * In-memory storage. Sources come from the bundled SEED_SOURCES; the
+ * derived cache is a per-process Map. On serverless this Map lives for the
+ * warm instance's lifetime (so the cache HIT demo still works when warm)
+ * and resets on a cold start — which is fine because the download route is
+ * stateless and never depends on it.
+ */
 export class Storage {
-  private readonly sourceDir: string;
-  private readonly derivedDir: string;
-
-  constructor(config: StorageConfig) {
-    this.sourceDir = config.sourceDir;
-    this.derivedDir = config.derivedDir;
-  }
-
-  private derivedPath(key: string): string {
-    return join(this.derivedDir, key);
-  }
-
-  private sourcePath(sourceKey: string): string {
-    return join(this.sourceDir, sourceKey);
-  }
+  private readonly derived = new Map<string, Buffer>();
 
   async readDerived(key: string): Promise<Buffer | null> {
-    try {
-      return await readFile(this.derivedPath(key));
-    } catch {
-      return null;
-    }
+    return this.derived.get(key) ?? null;
   }
 
   async writeDerived(key: string, body: Buffer): Promise<void> {
-    const path = this.derivedPath(key);
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, body);
+    this.derived.set(key, body);
   }
 
   async existsDerived(key: string): Promise<boolean> {
-    try {
-      await stat(this.derivedPath(key));
-      return true;
-    } catch {
-      return false;
-    }
+    return this.derived.has(key);
   }
 
   async openDerivedWrite(
     key: string,
   ): Promise<{ stream: NodeJS.WritableStream; done: Promise<void> }> {
-    const finalPath = this.derivedPath(key);
-    // NOTE: fixed temp path — two concurrent first-time builds of the SAME checksum
-    // could race this file. Acceptable for this single-user demo (no cache-race
-    // hardening; see docs/04). Each client still streams from its own builder.
-    const tmpPath = `${finalPath}.tmp`;
-    await mkdir(dirname(finalPath), { recursive: true });
-    const stream = createWriteStream(tmpPath);
+    const chunks: Buffer[] = [];
+    const stream = new Writable({
+      write(chunk, _enc, cb) {
+        chunks.push(Buffer.from(chunk));
+        cb();
+      },
+    });
     const done = new Promise<void>((resolve, reject) => {
       stream.on("error", reject);
+      // Atomic-by-completion: the key is published only after the archive
+      // has fully streamed, so a reader never sees a partial ZIP.
       stream.on("finish", () => {
-        rename(tmpPath, finalPath).then(resolve, reject);
+        this.derived.set(key, Buffer.concat(chunks));
+        resolve();
       });
     });
     return { stream, done };
   }
 
   openSource(sourceKey: string): NodeJS.ReadableStream {
-    // stat first so a missing source throws synchronously; the caller can
-    // then skip it, rather than the ENOENT arriving later as a stream
-    // 'error' that would tear down the archive.
-    statSync(this.sourcePath(sourceKey));
-    return createReadStream(this.sourcePath(sourceKey));
+    const src = SEED_SOURCES[sourceKey];
+    if (!src) throw new Error(`unknown source: ${sourceKey}`);
+    return Readable.from(Buffer.from(src.content, "utf8"));
   }
 
   sourceBytes(sourceKey: string): number {
-    return statSync(this.sourcePath(sourceKey)).size;
+    const src = SEED_SOURCES[sourceKey];
+    if (!src) throw new Error(`unknown source: ${sourceKey}`);
+    return Buffer.byteLength(src.content, "utf8");
   }
 }

@@ -13,9 +13,10 @@ of one.
 ## What it demonstrates
 
 - **Tee-stream cache** — the ZIP is built once, streamed to the client and
-  written to a derived-object cache at the same time via two `PassThrough`s
-  piped off a single `archiver` instance, with an atomic temp-then-rename
-  write so a partial build is never mistaken for a cached hit.
+  written to an in-memory derived cache at the same time via two
+  `PassThrough`s piped off a single `archiver` instance; the cache key is
+  published only after the full archive has streamed, so a partial build is
+  never mistaken for a cached hit.
 - **Content-addressed, idempotent archives** — a SHA-256 checksum over the
   exact asset selection, order, and zip name names both the archive's
   `payload.json` and its `download.zip`, so requesting the same selection
@@ -59,11 +60,39 @@ click "Download all", and watch the flow widget. Run it again with the same
 selection to see a cache HIT (the `build`/`tee` stages will show as
 skipped).
 
+## Deploy to Vercel (free)
+
+This repo is configured for Vercel's Hobby tier out of the box
+(`vercel.json`): the React app is served static and the Hono API runs as a
+single Node serverless function under `/api`. No environment variables are
+required.
+
+Two things make the stateful local server serverless-safe: the store is
+**in-memory** (SVG sources bundled in-process; the derived cache is a
+per-instance map), and the download is **stateless** — the signed link
+carries the selected ids, and the serve route rebuilds the ZIP from the
+bundled sources and confirms it hashes to the signed checksum, so it never
+depends on state the earlier request wrote (which on serverless may run on a
+different instance).
+
+- **Option A — Git:** push this repo to GitHub/GitLab, then in the Vercel
+  dashboard choose **Add New → Project** and import it. Vercel reads
+  `vercel.json` (`bun install`, `bun run build`, output `web/dist`, API under
+  `/api`).
+- **Option B — CLI:** `npm i -g vercel`, then from the repo root run `vercel`
+  (preview) or `vercel --prod`.
+
+**Smoke test the deployment:** open the URL, select 2–3 assets, click
+Download all, wait for READY, then click **Open** on the dock — a real
+`assets.zip` downloads. Note: the cache **HIT** indicator only reappears
+while the serverless instance stays warm (in-memory cache); a cold start
+shows **MISS** again, which is expected on the free tier.
+
 ## Docs
 
 - [`docs/01-overview.md`](docs/01-overview.md) — what the real feature does, the business problem, and what this demo implements.
 - [`docs/02-architecture.md`](docs/02-architecture.md) — full production topology and how this one service maps onto it, with a diagram.
 - [`docs/03-signed-urls.md`](docs/03-signed-urls.md) — the HMAC token scheme, link shape, expiry, and origin re-verification.
-- [`docs/04-tee-stream-and-cache.md`](docs/04-tee-stream-and-cache.md) — the centerpiece: the checksum, the tee-streaming builder, and the atomic cache write.
+- [`docs/04-tee-stream-and-cache.md`](docs/04-tee-stream-and-cache.md) — the centerpiece: the checksum, the tee-streaming builder, and the in-memory cache write.
 - [`docs/05-sse-flow.md`](docs/05-sse-flow.md) — the SSE event protocol and how the frontend maps events to stage state.
 - [`docs/06-frontend.md`](docs/06-frontend.md) — the Vite/Tailwind v4/shadcn stack, the SVG flow widget, and the IndexedDB run history.

@@ -67,15 +67,14 @@ await storage.writeDerived(
 ```
 
 `BulkDownloadArchive.payloadKey(checksum)` is
-`bulk-download/{checksum}/payload.json`. Writing it every time — rather than
-only on a cache miss — is deliberate and safe: the write is a pure function
-of the checksum (same checksum always produces the exact same JSON bytes),
-so re-writing it on a hit is a no-op in effect, just wasted I/O. This is what
-lets the download route (`GET
-/assets/:tenantId/download-all/:checksum/:zipName`) reconstruct the
-`BulkDownloadArchive` from disk via `BulkDownloadArchive.parsePayload()`
-without needing the original request's in-memory state — the payload *is*
-the durable record of what a checksum means.
+`bulk-download/{checksum}/payload.json`. It's written on every request — a
+record of what a checksum means — but serving no longer needs to read it.
+The download route (`GET /assets/:tenantId/download-all/:checksum/:zipName`)
+is **stateless**: it rebuilds the `BulkDownloadArchive` from the ids carried
+in the signed link, then confirms it hashes back to the checksum in the
+link. Because it needs nothing the earlier request stored, the two requests
+can safely land on different serverless instances — and tampering with the
+ids just yields a checksum mismatch and a 404.
 
 ## The tee: one archiver, two `PassThrough`s
 
@@ -126,36 +125,37 @@ build(archive: BulkDownloadArchive, progress?: BuildProgress): Readable {
   `body.destroy()`s the cache branch, letting the client download continue
   uninterrupted. **A caching failure never fails the user's download.**
 
-## Atomic temp-then-rename caching
+## Publishing the cache atomically
 
 `Storage.openDerivedWrite()` (`server/src/storage.ts`) is what makes the
-cache safe to read concurrently with a write in progress:
+derived cache safe to read concurrently with a write in progress:
 
 ```ts
 async openDerivedWrite(key: string) {
-  const finalPath = this.derivedPath(key);
-  const tmpPath = `${finalPath}.tmp`;
-  await mkdir(dirname(finalPath), { recursive: true });
-  const stream = createWriteStream(tmpPath);
+  const chunks: Buffer[] = [];
+  const stream = new Writable({
+    write(chunk, _enc, cb) { chunks.push(Buffer.from(chunk)); cb(); },
+  });
   const done = new Promise<void>((resolve, reject) => {
     stream.on("error", reject);
     stream.on("finish", () => {
-      rename(tmpPath, finalPath).then(resolve, reject);
+      this.derived.set(key, Buffer.concat(chunks)); // publish when complete
+      resolve();
     });
   });
   return { stream, done };
 }
 ```
 
-The write goes to `download.zip.tmp`, and only after the stream fully
-finishes does a `rename()` move it to the real `download.zip` path. This
-matters because `existsDerived()` (used by the cache-check stage) just
-`stat()`s the final path — if the builder wrote directly to `download.zip`
-and a concurrent request checked for its existence mid-write, it would see
-a partial, corrupt file and report a false HIT. With temp-then-rename, the
-final path only ever exists once the full archive is written; `rename()`
-within the same filesystem is atomic, so there's no window where a reader
-could see a partially-written `download.zip`.
+The streamed chunks are buffered, and the key is published into the
+in-memory derived map only on the stream's `finish` event. This matters
+because `existsDerived()` (used by the cache-check stage) just checks the
+map — if the builder set the key incrementally and a concurrent request
+checked mid-write, it would see a partial archive and report a false HIT.
+Setting the key in one step, after the full archive is written, closes that
+window: a reader either sees a complete archive or nothing at all. In
+production the same guarantee comes from writing to a temp object key and
+atomically promoting it once the upload completes.
 
 ## HIT / MISS lifecycle
 
