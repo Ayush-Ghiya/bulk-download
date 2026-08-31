@@ -1,0 +1,16 @@
+{
+  "//": "Used by @vercel/node to type-check the /api serverless function and its server/src imports. The web app has its own web/tsconfig.json and is unaffected.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": ["server/src/**/*.ts", "api/**/*.ts"]
+}

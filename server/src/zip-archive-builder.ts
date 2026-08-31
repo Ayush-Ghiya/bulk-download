@@ -4,8 +4,8 @@ import archiver from "archiver";
 import {
   BulkDownloadArchive,
   type BulkDownloadEntry,
-} from "./bulk-download.ts";
-import type { Storage } from "./storage.ts";
+} from "./bulk-download";
+import type { Storage } from "./storage";
 
 export interface BuildProgress {
   onEntry?(name: string, index: number, total: number): void;
@@ -76,7 +76,7 @@ export class ZipArchiveBuilder {
       let i = 0;
       for (const entry of entries) {
         i += 1;
-        let source: NodeJS.ReadableStream;
+        let source: Readable;
         try {
           source = this.storage.openSource(entry.sourceKey);
         } catch {

@@ -4,6 +4,10 @@
   "workspaces": {
     "": {
       "name": "bulk-download-demo",
+      "devDependencies": {
+        "@types/archiver": "^6.0.2",
+        "@types/node": "^22.10.0",
+      },
     },
     "server": {
       "name": "bulk-download-demo-server",

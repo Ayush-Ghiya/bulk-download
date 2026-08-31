@@ -1,5 +1,5 @@
 import { Readable, Writable } from "node:stream";
-import { SEED_SOURCES } from "./sources.ts";
+import { SEED_SOURCES } from "./sources";
 
 /**
  * In-memory storage. Sources come from the bundled SEED_SOURCES; the
@@ -45,7 +45,7 @@ export class Storage {
     return { stream, done };
   }
 
-  openSource(sourceKey: string): NodeJS.ReadableStream {
+  openSource(sourceKey: string): Readable {
     const src = SEED_SOURCES[sourceKey];
     if (!src) throw new Error(`unknown source: ${sourceKey}`);
     return Readable.from(Buffer.from(src.content, "utf8"));
