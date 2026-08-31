@@ -52,14 +52,14 @@ ZIP, either served from cache or built and tee-streamed on the spot.
 |---|---|
 | Content-addressed checksum (`BulkDownloadArchive.checksum`) | Real SHA-256 over `{tenantId, zipName, entries}`, order-sensitive. |
 | Tee-stream ZIP builder (`archiver` → two `PassThrough`s) | Real, store-mode archiver, no per-file compression cost. |
-| Idempotent `payload.json` + `download.zip` cache | Real two-directory filesystem storage, atomic temp-then-rename write. |
+| Idempotent `payload.json` + `download.zip` cache | Real content-addressed store (in-memory here); the cache key is published only after the archive fully streams. |
 | HMAC-signed, expiring URLs | Real HMAC-SHA256 scheme; see [`03-signed-urls.md`](03-signed-urls.md). |
 | Origin token re-verification | Real; the download route calls `signer.verify()` independently of the SSE stream. |
 | SSE stage-by-stage progress | Real `streamSSE` endpoint driving the live flow widget, covering both requests — including the `bff` and `cdn` stages that mark where those hops sit in the production topology. |
 
 A production deployment adds a few things this single-process demo doesn't
 need to illustrate the core mechanism: a real object store (S3 or
-equivalent) in place of the two local folders, a separately-deployed
+equivalent) in place of the in-memory store, a separately-deployed
 dashboard BFF and CDN instead of one Bun/Hono service standing in for both,
 multi-tenant asset isolation and status filtering, an upload/ingestion
 pipeline, retry/backoff policies, rate limits, and an automated test suite.

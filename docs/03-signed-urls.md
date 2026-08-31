@@ -5,11 +5,14 @@ Source: `server/src/signer.ts`, consumed by `server/src/routes.ts` and
 
 ## Why sign at all
 
-The archive endpoint serves whatever is in `server/storage/derived/`. Without
-some form of authorization, anyone who could guess a checksum could download
-the archive, and there'd be no way to make a link expire. A signed,
-expiring URL solves both: only a link minted by the server (holder of the
-`securityKey`) is accepted, and it stops working after `expires`.
+The archive endpoint hands back a content-addressed archive for any valid
+checksum. Without some form of authorization, anyone who could guess a
+checksum could download the archive, and there'd be no way to make a link
+expire. A signed, expiring URL solves both: only a link minted by the
+server (holder of the `securityKey`) is accepted, and it stops working
+after `expires`. The link also carries the selected ids, so the endpoint
+rebuilds the archive and confirms it hashes back to the signed checksum —
+tampering with the ids just yields a mismatch and a 404.
 
 ## Link shape
 
